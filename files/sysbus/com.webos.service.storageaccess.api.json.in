@@ -1,0 +1,12 @@
+{
+    "storageaccess.operation": [
+        "com.webos.service.storageaccess/listFolderContents",
+        "com.webos.service.storageaccess/getProperties",
+        "com.webos.service.storageaccess/listOfStorages",
+        "com.webos.service.storageaccess/copy",
+        "com.webos.service.storageaccess/move",
+        "com.webos.service.storageaccess/remove",
+        "com.webos.service.storageaccess/eject",
+        "com.webos.service.storageaccess/format"
+    ]
+}

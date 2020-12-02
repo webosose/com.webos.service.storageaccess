@@ -1,0 +1,13 @@
+{
+    "exeName":"@WEBOS_INSTALL_SBINDIR@/com.webos.service.storageaccess",
+    "type": "regular",
+    "allowedNames": ["com.webos.service.storageaccess"],
+    "permissions": [
+        {
+            "service":"com.webos.service.storageaccess",
+            "outbound":[
+                "*"
+            ]
+        }
+    ]
+}

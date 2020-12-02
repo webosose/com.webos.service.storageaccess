@@ -1,4 +1,4 @@
- // Copyright (c) 2020 LG Electronics, Inc.
+// Copyright (c) 2020 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,37 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef _SAF_LUNA_SERVICE_H_
-#define _SAF_LUNA_SERVICE_H_
+#ifndef SRC_LUNA_SAFLUNASERVICE_H_
+#define SRC_LUNA_SAFLUNASERVICE_H_
 
-#endif
- 
+#include <luna-service2/lunaservice.hpp>
+#include <StatusHandler.h>
+#include <SAFLunaUtils.h>
+#include <SAFErrors.h>
+#include <SAFLog.h>
+
+class SAFLunaService: public LS::Handle, public StatusObserver
+{
+public:
+    SAFLunaService();
+    virtual ~SAFLunaService();
+    bool listFolderContents(LSMessage &message);
+    bool getProperties(LSMessage &message);
+    bool listOfStorages(LSMessage &message);
+    bool copy(LSMessage &message);
+    bool move(LSMessage &message);
+    bool eject(LSMessage &message);
+    bool remove(LSMessage &message);
+    bool format(LSMessage &message);
+
+private :
+    static LSHandle* lsHandle;
+
+    void registerService();
+//  static void responseCallback(Parameters* paramList, LS::Message& message);
+//  bool addSubscription(LSHandle *sh, LSMessage *message, std::string key);
+//  void setLSHandle(LSHandle* handle);
+
+};
+#endif /* SRC_LUNA_SAFLUNASERVICE_H_ */
+
