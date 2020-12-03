@@ -1,42 +1,39 @@
-// Copyright (c) 2020 LG Electronics, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// SPDX-License-Identifier: Apache-2.0
+/* @@@LICENSE
+ *
+ * Copyright (c) 2020 LG Electronics, Inc.
+ *
+ * Confidential computer software. Valid license from LG required for
+ * possession, use or copying. Consistent with FAR 12.211 and 12.212,
+ * Commercial Computer Software, Computer Software Documentation, and
+ * Technical Data for Commercial Items are licensed to the U.S. Government
+ * under vendor's standard commercial license.
+ *
+ * LICENSE@@@ */
+
 
 #ifndef _DOCUMENT_PROVIDER_MANAGER_H_
 #define _DOCUMENT_PROVIDER_MANAGER_H_
 
-typedef enum
-{
-    INTERNAL,
-    USB,
-    GDRIVE
-} STORAGE_TYPE
+#include <string>
+#include <vector>
+#include <memory>
+#include "SA_Common.h"
+#include "DocumentProviderFactory.h"
 
 class DocumentProviderManager {
 public:
+    DocumentProviderManager();
+    ~DocumentProviderManager();
 
-    DocumentProviderManager() = default;
-    virtual ~DocumentProvider() = default;
-    virtual bool listFolderContents(string path) = 0;
-    virtual string getProperties(string path) = 0;
-    virtual bool copy(string src, string dest) = 0;
-    virtual bool move(string src, string dest) = 0;
-    virtual bool remove(string path) = 0;
-    virtual bool eject(string deviceId) = 0;
-    virtual bool format(string deviceId) = 0;
-    virtual bool Authendication(string deviceId) = 0;
-}
+    ReturnValue listOfStoreages();
+    ReturnValue listFolderContents(string storageType, string storageId, string path, int offset, int limit);
+    ReturnValue getProperties(string storageType);
+    ReturnValue copy(string srcStorageType, string srcStorageId, string srcPath, string destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue move(string srcStorageType, string srcStorageId, string srcPath, string destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue remove(string storageType, string storageId, string path);
+    ReturnValue eject(string storageType, string storageId);
+    ReturnValue format(string storageType, string storageId, string fileSystem, string volumeLabel);
+    /*virtual bool Authendication(string deviceId) = 0;*/
+};
+
 #endif /* _DOCUMENT_PROVIDER_MANAGER_H_ */
-
