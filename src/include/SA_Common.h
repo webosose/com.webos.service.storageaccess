@@ -23,8 +23,9 @@ enum class DataType {
     STRING, NUMBER, BOOLEAN
 };
 
-enum class StorageType {
-    INTERNAL, USB, GDRIVE
+enum class StorageType
+{
+    INVALID = -1, INTERNAL, USB, GDRIVE
 };
 
 class Content {

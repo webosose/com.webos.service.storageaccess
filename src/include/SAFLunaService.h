@@ -23,6 +23,8 @@
 #include <SAFLunaUtils.h>
 #include <SAFErrors.h>
 #include <SAFLog.h>
+#include <stdbool.h>
+#include <pbnjson.h>
 
 class SAFLunaService: public LS::Handle, public StatusObserver
 {
@@ -39,10 +41,12 @@ public:
     bool remove(LSMessage &message);
     bool eject(LSMessage &message);
     bool format(LSMessage &message);
+    StorageType getStorageDeviceType(pbnjson::JValue jsonObj);
 
 private :
     std::shared_ptr<DocumentProviderManager> mDocumentProviderManager;
     static LSHandle* lsHandle;
+    AuthParam mAuthParam;
 
     void registerService();
 //  static void responseCallback(Parameters* paramList, LS::Message& message);

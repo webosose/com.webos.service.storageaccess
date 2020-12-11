@@ -31,7 +31,7 @@ public:
     virtual ~GDriveProvider();
     ReturnValue attachCloud(AuthParam authParam);
     ReturnValue authenticateCloud(AuthParam authParam);
-    ReturnValue listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit);
+    ReturnValue listFolderContents(AuthParam authParam, string storageType, string path, int offset, int limit);
     ReturnValue getProperties(AuthParam authParam);
     ReturnValue copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
     ReturnValue move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);

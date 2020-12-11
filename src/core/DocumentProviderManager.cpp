@@ -11,7 +11,7 @@
  * LICENSE@@@ */
 
 #include <SAFLog.h>
-#include "DocumentProviderManager.h"
+#include <DocumentProviderManager.h>
 
 DocumentProviderManager::DocumentProviderManager()
 {

@@ -19,6 +19,7 @@
 
 static const char* const logContextName = "SAF";
 
+//#ifdef USE_PMLOG
 PmLogContext getSAFPmLogContext()
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
@@ -34,3 +35,4 @@ PmLogContext getSAFPmLogContext()
     }
     return logContext;
 }
+//#endif

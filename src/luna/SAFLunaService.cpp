@@ -14,8 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include<string>
-#include<SAFLunaService.h>
+#include <string>
+#include <SAFLunaService.h>
 
 const std::string service_name = "com.webos.service.storageaccess";
 
@@ -70,7 +70,6 @@ bool SAFLunaService::attachCloud(LSMessage &message)
     int storageType = 0;
 
     ReturnValue retValue;
-    AuthParam authParam;
 
     LOG_DEBUG_SAF("attachCloud : Before Schema check");
     const std::string schema = STRICT_SCHEMA(PROPS_3(PROP(storageType, integer), PROP(clientID, string), PROP(clientSecret, string))REQUIRED_3(storageType, clientID, clientSecret));
@@ -84,34 +83,14 @@ bool SAFLunaService::attachCloud(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
         return true;
     }
-    StorageType storage_type;
-    if (requestObj["storageType"].asNumber<int>(storageType) == CONV_OK)
-    {
-        switch(storageType)
-        {
-            case 0:
-                storage_type = StorageType::INTERNAL;
-                LOG_DEBUG_SAF("attachCloud : storageType = 0 && storage_type = %d", storage_type);
-                break;
-            case 1:
-                storage_type = StorageType::USB;
-                LOG_DEBUG_SAF("attachCloud : storageType = 1 && storage_type = %d", storage_type);
-                break;
-            case 2:
-                storage_type = StorageType::GDRIVE;
-                LOG_DEBUG_SAF("attachCloud : storageType = 2 && storage_type = %d", storage_type);
-                break;
-            default:
-                LOG_DEBUG_SAF("attachCloud : Invalid storageType");
-        }
-    }
+    StorageType storage_type = getStorageDeviceType(requestObj);
     clientID = requestObj["clientID"].asString();
     clientSecret = requestObj["clientSecret"].asString();
     if (!clientID.empty() && !clientSecret.empty())
     {
-        authParam["clientID"] = clientID;
-        authParam["clientSecret"] = clientSecret;
-        retValue = mDocumentProviderManager->attachCloud(storage_type, authParam);
+        mAuthParam["client_id"] = clientID;
+        mAuthParam["client_secret"] = clientSecret;
+        retValue = mDocumentProviderManager->attachCloud(storage_type, mAuthParam);
     }
 
     pbnjson::JValue responseObj = pbnjson::Object();
@@ -151,6 +130,32 @@ bool SAFLunaService::attachCloud(LSMessage &message)
 bool SAFLunaService::authenticateCloud(LSMessage &message)
 {
     LS::Message request(&message);
+    pbnjson::JValue requestObj;
+    int parseError = 0;
+    std::string payload;
+
+    const std::string schema = STRICT_SCHEMA(PROPS_2(PROP(storageType, integer),PROP(secretToken, string))REQUIRED_2(storageType,secretToken));
+    LOG_DEBUG_SAF("authenticateCloud : Schema = %s", schema.c_str());
+
+    if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError)) {
+        LOG_DEBUG_SAF("authenticateCloud : Invalid Json Format Error");
+        const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
+        LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
+        return true;
+    }
+
+    StorageType storage_type = getStorageDeviceType(requestObj);
+    mAuthParam["secret_token"] = requestObj["secretToken"].asString();
+
+    if (!mAuthParam["client_id"].empty() && !mAuthParam["client_secret"].empty()) {
+        ReturnValue retValue = mDocumentProviderManager->authenticateCloud(storage_type, mAuthParam);
+    }
+
+    pbnjson::JValue responseObj = pbnjson::Object();
+    responseObj.put("returnValue", true);
+
+    LSUtils::generatePayload(responseObj, payload);
+    request.respond(payload.c_str());
     return true;
 }
 
@@ -158,29 +163,37 @@ bool SAFLunaService::listFolderContents(LSMessage &message)
 {
     LS::Message request(&message);
 
-    LOG_TRACE("Entering function %s", __FUNCTION__);
+    LOG_TRACE("Entering function %s", __FUNCTION__)
 
     pbnjson::JValue requestObj;
     std::string payload;
     int parseError = 0;
 
     LOG_DEBUG_SAF("listFolderContents : Before Schema check");
-    const std::string schema = STRICT_SCHEMA(PROPS_1(PROP(folderPath, string))REQUIRED_1(folderPath));
-
+    const std::string schema = STRICT_SCHEMA(PROPS_5(PROP(storageType, integer),PROP(folderPath, string),PROP(limit, integer),PROP(offset, integer),PROP(refreshToken, string))REQUIRED_2(storageType,folderPath));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
-        LOG_DEBUG_SAF("Parmi : listFolderContents : Invalid Json Format Error");
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
         return true;
     }
 
-    std::string folderPathString = requestObj["folderPath"].asString();
+    int offset = -1;
+    int limit = -1;
+    StorageType storageType = getStorageDeviceType(requestObj);
+    string folderPathString = requestObj["folderPath"].asString();
+    string storageIdStr = requestObj["storageId"].asString();
+
     LOG_DEBUG_SAF("listFolderContents : Folder Path : %s", folderPathString.c_str());
+
+    requestObj["offset"].asNumber<int>(offset);
+    requestObj["limit"].asNumber<int>(limit);
+    mAuthParam["refresh_token"] = requestObj["refreshToken"].asString();
+
+    ReturnValue retValue = mDocumentProviderManager->listFolderContents(mAuthParam, storageType, storageIdStr, folderPathString, offset, limit);
 
     pbnjson::JValue responseObj = pbnjson::Object();
     responseObj.put("returnValue", true);
-
     LSUtils::generatePayload(responseObj, payload);
     request.respond(payload.c_str());
     return true;
@@ -195,7 +208,7 @@ bool SAFLunaService::getProperties(LSMessage &message)
     int parseError = 0;
     std::string payload;
 
-    const std::string schema = STRICT_SCHEMA(PROPS_1(PROP(folderPath, string))REQUIRED_1(folderPath));
+    const std::string schema = STRICT_SCHEMA(PROPS_1(PROP(storageType, string))REQUIRED_1(storageType));
 
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
@@ -204,8 +217,9 @@ bool SAFLunaService::getProperties(LSMessage &message)
         return true;
     }
 
-    std::string folderPathString = requestObj["folderPath"].asString();
-    LOG_DEBUG_SAF("getProperties : Folder Path : %s", folderPathString.c_str());
+    StorageType storageType = getStorageDeviceType(requestObj);
+
+    mDocumentProviderManager->getProperties(mAuthParam,storageType);
 
     pbnjson::JValue responseObj = pbnjson::Object();
     responseObj.put("returnValue", true);
@@ -292,7 +306,29 @@ bool SAFLunaService::move(LSMessage &message)
 bool SAFLunaService::remove(LSMessage &message)
 {
     LS::Message request(&message);
+    pbnjson::JValue requestObj;
+    int parseError = 0;
+    std::string payload;
+    const std::string schema = STRICT_SCHEMA(PROPS_2(PROP(storageType, string),PROP(folderPath, string))REQUIRED_2(storageType,folderPath));
+    if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
+    {
+        const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
+        LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
+        return true;
+    }
+    std::string storageTypeString = requestObj["storageType"].asString();
+    std::string folderpathString = requestObj["folderPath"].asString();
+    std::string storageIdString = "GDrive"; //requestObj["storageId"].asString();
+    LOG_DEBUG_SAF("========> storageType:%s",storageTypeString.c_str());
+    LOG_DEBUG_SAF("========> folderPath:%s",folderpathString.c_str());
 
+    StorageType storageType = getStorageDeviceType(requestObj);
+    mDocumentProviderManager->remove(mAuthParam,storageType,storageIdString,folderpathString);
+
+    pbnjson::JValue responseObj = pbnjson::Object();
+    responseObj.put("returnValue", true);
+    LSUtils::generatePayload(responseObj, payload);
+    request.respond(payload.c_str());
     return true;
 }
 
@@ -308,5 +344,28 @@ bool SAFLunaService::format(LSMessage &message)
     LS::Message request(&message);
 
     return true;
+}
+
+StorageType SAFLunaService::getStorageDeviceType(pbnjson::JValue jsonObj)
+{
+    int storageTypeInt = -1;
+    StorageType storageType = StorageType::INVALID;
+    if (jsonObj["storageType"].asNumber<int>(storageTypeInt) == CONV_OK) {
+        switch (storageTypeInt) {
+        case 0:
+            storageType = StorageType::INTERNAL;
+            break;
+        case 1:
+            storageType = StorageType::USB;
+            break;
+        case 2:
+            storageType = StorageType::GDRIVE;
+            break;
+        default:
+            storageType = StorageType::INVALID;
+            LOG_DEBUG_SAF("attachCloud : Invalid storageType");
+        }
+    }
+    return storageType;
 }
 
