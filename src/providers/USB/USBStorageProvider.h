@@ -24,8 +24,8 @@ public:
     virtual ~USBStorageProvider();
     ReturnValue listFolderContents(string storageId, string path, int offset, int limit);
     ReturnValue getProperties();
-    ReturnValue copy(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite);
-    ReturnValue move(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite);
+    ReturnValue copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
     ReturnValue remove(string storageId, string path);
     ReturnValue eject(string storageId);
     ReturnValue format(string storageId, string fileSystem, string volumeLabel);

@@ -19,6 +19,14 @@
 
 using namespace std;
 
+enum class DataType {
+    STRING, NUMBER, BOOLEAN
+};
+
+enum class StorageType {
+    INTERNAL, USB, GDRIVE
+};
+
 class Content {
 public:
     Content() {};
@@ -27,14 +35,10 @@ public:
 
 class Storage : public Content  {
 public:
-    Storage(string _type, string _id, string _name) : type(_type), id(_id), name(_name) {}
-    string type;
+    Storage(StorageType _type, string _id, string _name) : type(_type), id(_id), name(_name) {}
+    StorageType type;
     string id;
     string name;
-};
-
-enum class DataType {
-    STRING, NUMBER, BOOLEAN
 };
 
 typedef pair<string,DataType> ValuePair;

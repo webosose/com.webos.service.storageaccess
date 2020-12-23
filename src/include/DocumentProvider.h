@@ -29,13 +29,11 @@ public:
     virtual ~DocumentProvider() = default;
     virtual ReturnValue listFolderContents(string storageId, string path, int offset, int limit) = 0;
     virtual ReturnValue getProperties() = 0;
-    virtual ReturnValue copy(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite) = 0;
-    virtual ReturnValue move(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite) = 0;
+    virtual ReturnValue copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite) = 0;
+    virtual ReturnValue move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite) = 0;
     virtual ReturnValue remove(string storageId, string path) = 0;
     virtual ReturnValue eject(string storageId) = 0;
     virtual ReturnValue format(string storageId, string fileSystem, string volumeLabel) = 0;
-    virtual fstream getFileStream(string path, ios_base::openmode mode) = 0;
-
    /* virtual ReturnValue Authendication(string deviceId) = 0;*/
 };
 

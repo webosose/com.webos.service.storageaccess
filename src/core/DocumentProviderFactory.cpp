@@ -15,24 +15,24 @@
 
 DocumentProviderFactory::Factories DocumentProviderFactory::mFactories;
 
-shared_ptr<vector<string>> DocumentProviderFactory::getSupportedDocumentProviders()
+shared_ptr<vector<StorageType>> DocumentProviderFactory::getSupportedDocumentProviders()
 {
-    shared_ptr<vector<string>> providers = make_shared<vector<string>>();
+    shared_ptr<vector<StorageType>> providers = make_shared<vector<StorageType>>();
     for (auto itr = mFactories.begin(); itr != mFactories.end(); ++itr) {
         providers->push_back(itr->first);
     }
     return providers;
 }
 
-shared_ptr<DocumentProvider> DocumentProviderFactory::createDocumentProvider(const string& type)
+shared_ptr<DocumentProvider> DocumentProviderFactory::createDocumentProvider(StorageType type)
 {
     shared_ptr<DocumentProvider> docProvider;
 
-    map<string, Factory>::iterator it;
-    it = mFactories.find(type.c_str());
+    map<StorageType, Factory>::iterator it;
+    it = mFactories.find(type);
     if(it != mFactories.end())
     {
-        Factory factory = mFactories.find(type.c_str())->second;
+        Factory factory = mFactories.find(type)->second;
         docProvider = factory->create();
     }
     return docProvider;

@@ -31,15 +31,16 @@ ReturnValue InternalStorageProvider::getProperties() {
     return nullptr;
 }
 
-ReturnValue InternalStorageProvider::copy(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite)
+ReturnValue InternalStorageProvider::copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
     return nullptr;
 }
 
-ReturnValue InternalStorageProvider::move(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite)
+ReturnValue InternalStorageProvider::move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
     return nullptr;
 }
+
 
 ReturnValue InternalStorageProvider::remove(string storageId, string path)
 {
@@ -54,10 +55,4 @@ ReturnValue InternalStorageProvider::eject(string storageId)
 ReturnValue InternalStorageProvider::format(string storageId, string fileSystem, string volumeLabel)
 {
     return nullptr;
-}
-
-fstream InternalStorageProvider::getFileStream(string path, ios_base::openmode mode)
-{
-    fstream fs;
-    return fs;
 }

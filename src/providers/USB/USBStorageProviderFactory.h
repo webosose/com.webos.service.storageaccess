@@ -20,6 +20,6 @@ class USBStorageProviderFactory : public DocumentProviderFactory
 {
     public:
         virtual std::shared_ptr<DocumentProvider> create(void) const;
-        const char* getType() const { return "USB"; }
+        StorageType getType() const { return StorageType::USB; }
 };
 #endif

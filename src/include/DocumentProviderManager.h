@@ -26,13 +26,13 @@ public:
     ~DocumentProviderManager();
 
     ReturnValue listOfStoreages();
-    ReturnValue listFolderContents(string storageType, string storageId, string path, int offset, int limit);
-    ReturnValue getProperties(string storageType);
-    ReturnValue copy(string srcStorageType, string srcStorageId, string srcPath, string destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue move(string srcStorageType, string srcStorageId, string srcPath, string destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue remove(string storageType, string storageId, string path);
-    ReturnValue eject(string storageType, string storageId);
-    ReturnValue format(string storageType, string storageId, string fileSystem, string volumeLabel);
+    ReturnValue listFolderContents(StorageType storageType, string storageId, string path, int offset, int limit);
+    ReturnValue getProperties(StorageType storageType);
+    ReturnValue copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue remove(StorageType storageType, string storageId, string path);
+    ReturnValue eject(StorageType storageType, string storageId);
+    ReturnValue format(StorageType storageType, string storageId, string fileSystem, string volumeLabel);
     /*virtual bool Authendication(string deviceId) = 0;*/
 };
 

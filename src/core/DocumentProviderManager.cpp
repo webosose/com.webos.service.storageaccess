@@ -21,16 +21,18 @@ DocumentProviderManager::~DocumentProviderManager()
 
 ReturnValue DocumentProviderManager::listOfStoreages()
 {
-    shared_ptr<vector<string>> storageProviders = DocumentProviderFactory::getSupportedDocumentProviders();
+    shared_ptr<vector<StorageType>> storageProviders = DocumentProviderFactory::getSupportedDocumentProviders();
     shared_ptr<ContentList> storageList = make_shared<ContentList>();
 
     for (auto itr = storageProviders->begin(); itr != storageProviders->end(); ++itr) {
-        if (*itr == "USB") {
-            // For USB Storages, First need to find out it is attached or not
-            // by calling PDM service, then populate the data with the result.
-            storageList->push_back(make_shared<Storage>(*itr, "-1", *itr));
-        } else{
-            storageList->push_back(make_shared<Storage>(*itr, "-1", *itr));
+        switch(*itr) {
+            case StorageType::USB:
+                // For USB Storages, First need to find out it is attached or not
+                // by calling PDM service, then populate the data with the result.
+                storageList->push_back(make_shared<Storage>(*itr, "-1", "USB"));
+            break;
+            default:
+                storageList->push_back(make_shared<Storage>(*itr, "-1", ""));
         }
     }
 
@@ -42,107 +44,55 @@ ReturnValue DocumentProviderManager::listOfStoreages()
     return make_shared<ResultPair>(valueMap, storageList);
 }
 
-ReturnValue DocumentProviderManager::listFolderContents(string storageType, string storageId, string path, int offset, int limit)
+ReturnValue DocumentProviderManager::listFolderContents(StorageType storageType, string storageId, string path, int offset, int limit)
 {
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
     return provider->listFolderContents(storageId, path, offset, limit);
 }
 
-ReturnValue DocumentProviderManager::getProperties(string storageType)
+ReturnValue DocumentProviderManager::getProperties(StorageType storageType)
 {
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
     return provider->getProperties();
 }
 
-ReturnValue DocumentProviderManager::copy(string srcStorageType, string srcStorageId, string srcPath,
-                            string destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue DocumentProviderManager::copy(StorageType srcStorageType, string srcStorageId, string srcPath,
+                            StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
-    if (srcStorageType == destStorageType) {
-        shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(srcStorageType);
-        return provider->copy(srcStorageId, srcPath, destStorageId, destPath, overwrite);
+    shared_ptr<DocumentProvider> provider;
+    if (srcStorageType == StorageType::GDRIVE) {
+        provider = DocumentProviderFactory::createDocumentProvider(srcStorageType);
     } else {
-        shared_ptr<DocumentProvider> srcProvider = DocumentProviderFactory::createDocumentProvider(srcStorageType);
-        shared_ptr<DocumentProvider> destProvider = DocumentProviderFactory::createDocumentProvider(destStorageType);
-
-        shared_ptr<ValuePairMap> valueMap = make_shared<ValuePairMap>();
-
-        fstream inputFile  = srcProvider->getFileStream(srcPath, ios::in|ios::binary);
-        fstream outputFile = srcProvider->getFileStream(destPath, ios::out|ios::binary);
-        if (!inputFile) {
-            valueMap->emplace("returnValue", pair<string,DataType>("false", DataType::BOOLEAN));
-            valueMap->emplace("errorCode",   pair<string,DataType>("-1",   DataType::NUMBER));
-            valueMap->emplace("errorText",   pair<string,DataType>("Input file not available", DataType::STRING));
-            return make_shared<ResultPair>(valueMap, nullptr);
-        }
-        if (!outputFile) {
-            valueMap->emplace("returnValue", pair<string,DataType>("false", DataType::BOOLEAN));
-            valueMap->emplace("errorCode",   pair<string,DataType>("-1",   DataType::NUMBER));
-            valueMap->emplace("errorText",   pair<string,DataType>("Unable to open output file", DataType::STRING));
-            return make_shared<ResultPair>(valueMap, nullptr);
-        }
-        char* buffer = new char[1024];
-        while(true) {
-            inputFile.read(buffer, 1024);
-            outputFile.write(buffer, 1024);
-            if (inputFile.eof()) break;
-        }
-        valueMap->emplace("returnValue", pair<string,DataType>("true", DataType::BOOLEAN));
-        valueMap->emplace("errorCode",   pair<string,DataType>("-1",   DataType::NUMBER));
-        valueMap->emplace("errorText",   pair<string,DataType>("", DataType::STRING));
-        return make_shared<ResultPair>(valueMap, nullptr);
+        provider = DocumentProviderFactory::createDocumentProvider(destStorageType);
     }
+    return provider->copy(srcStorageType, srcStorageId, srcPath, destStorageType, destStorageId, destPath, overwrite);
 }
 
-ReturnValue DocumentProviderManager::move(string srcStorageType, string srcStorageId, string srcPath,
-                            string destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue DocumentProviderManager::move(StorageType srcStorageType, string srcStorageId, string srcPath,
+                            StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
-    if (srcStorageType == destStorageType) {
-        shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(srcStorageType);
-        return provider->copy(srcStorageId, srcPath, destStorageId, destPath, overwrite);
+    shared_ptr<DocumentProvider> provider;
+    if (srcStorageType == StorageType::GDRIVE) {
+        provider = DocumentProviderFactory::createDocumentProvider(srcStorageType);
     } else {
-        shared_ptr<DocumentProvider> srcProvider = DocumentProviderFactory::createDocumentProvider(srcStorageType);
-        shared_ptr<DocumentProvider> destProvider = DocumentProviderFactory::createDocumentProvider(destStorageType);
-
-        shared_ptr<ValuePairMap> valueMap = make_shared<ValuePairMap>();
-
-        fstream inputFile  = srcProvider->getFileStream(srcPath, ios::in|ios::binary);
-        fstream outputFile = srcProvider->getFileStream(destPath, ios::out|ios::binary);
-        if (!inputFile) {
-            valueMap->emplace("returnValue", pair<string,DataType>("false", DataType::BOOLEAN));
-            valueMap->emplace("errorCode",   pair<string,DataType>("-1",   DataType::NUMBER));
-            valueMap->emplace("errorText",   pair<string,DataType>("Unable to open output file", DataType::STRING));
-            return make_shared<ResultPair>(valueMap, nullptr);
-        }
-        if (!outputFile) {
-            valueMap->emplace("returnValue", pair<string,DataType>("false", DataType::BOOLEAN));
-            valueMap->emplace("errorCode",   pair<string,DataType>("-1",   DataType::NUMBER));
-            valueMap->emplace("errorText",   pair<string,DataType>("Unable to open output file", DataType::STRING));
-            return make_shared<ResultPair>(valueMap, nullptr);
-        }
-
-        char* buffer = new char[1024];
-        while(true) {
-            inputFile.read(buffer, 1024);
-            outputFile.write(buffer, 1024);
-            if (inputFile.eof()) break;
-        }
-        return srcProvider->remove(srcStorageId, srcPath);
+        provider = DocumentProviderFactory::createDocumentProvider(destStorageType);
     }
+    return provider->move(srcStorageType, srcStorageId, srcPath, destStorageType, destStorageId, destPath, overwrite);
 }
 
-ReturnValue DocumentProviderManager::remove(string storageType, string storageId, string path)
+ReturnValue DocumentProviderManager::remove(StorageType storageType, string storageId, string path)
 {
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
     return provider->remove(storageId, path);
 }
 
-ReturnValue DocumentProviderManager::eject(string storageType, string storageId)
+ReturnValue DocumentProviderManager::eject(StorageType storageType, string storageId)
 {
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
     return provider->eject(storageId);
 }
 
-ReturnValue DocumentProviderManager::format(string storageType, string storageId, string fileSystem, string volumeLabel)
+ReturnValue DocumentProviderManager::format(StorageType storageType, string storageId, string fileSystem, string volumeLabel)
 {
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
     return provider->format(storageId,fileSystem,volumeLabel);

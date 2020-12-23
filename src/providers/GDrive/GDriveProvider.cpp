@@ -30,12 +30,12 @@ ReturnValue GDriveProvider::getProperties() {
     return nullptr;
 }
 
-ReturnValue GDriveProvider::copy(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite)
+ReturnValue GDriveProvider::copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
     return nullptr;
 }
 
-ReturnValue GDriveProvider::move(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite)
+ReturnValue GDriveProvider::move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
     return nullptr;
 }
@@ -55,8 +55,4 @@ ReturnValue GDriveProvider::format(string storageId, string fileSystem, string v
     return nullptr;
 }
 
-fstream GDriveProvider::getFileStream(string path, ios_base::openmode mode)
-{
-    fstream fs;
-    return fs;
-}
+

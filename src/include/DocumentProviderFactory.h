@@ -26,12 +26,12 @@ class DocumentProviderFactory
         virtual ~DocumentProviderFactory() {}
 
         virtual  shared_ptr<DocumentProvider> create() const = 0;
-        virtual const char* getType() const = 0;
+        virtual StorageType getType() const = 0;
 
-        static shared_ptr<DocumentProvider> createDocumentProvider(const string& type);
-        static shared_ptr<vector<string>> getSupportedDocumentProviders();
+        static shared_ptr<DocumentProvider> createDocumentProvider(StorageType type);
+        static shared_ptr<vector<StorageType>> getSupportedDocumentProviders();
         typedef shared_ptr<DocumentProviderFactory> Factory;
-        typedef map<string, Factory> Factories;
+        typedef map<StorageType, Factory> Factories;
 
         template <typename T>
         struct Registrator
@@ -39,9 +39,9 @@ class DocumentProviderFactory
             Registrator()
             {
                 Factory factory { new T() };
-                string key(factory->getType());
-                pair<map<string, Factory>::iterator, bool > result;
-                result = mFactories.emplace(pair<string, Factory>(key, factory));
+                StorageType key(factory->getType());
+                pair<map<StorageType, Factory>::iterator, bool > result;
+                result = mFactories.emplace(pair<StorageType, Factory>(key, factory));
             }
         };
 

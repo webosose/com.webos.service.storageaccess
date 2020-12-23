@@ -20,6 +20,6 @@ class InternalStorageProviderFactory : public DocumentProviderFactory
 {
     public:
         virtual std::shared_ptr<DocumentProvider> create(void) const;
-        const char* getType() const { return "internal"; }
+        StorageType getType() const { return StorageType::INTERNAL; }
 };
 #endif

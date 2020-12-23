@@ -29,12 +29,12 @@ ReturnValue USBStorageProvider::getProperties() {
     return nullptr;
 }
 
-ReturnValue USBStorageProvider::copy(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite)
+ReturnValue USBStorageProvider::copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
     return nullptr;
 }
 
-ReturnValue USBStorageProvider::move(string srcStorageId, string srcPath, string destStorageId, string destPath, bool overwrite)
+ReturnValue USBStorageProvider::move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
     return nullptr;
 }
@@ -53,10 +53,3 @@ ReturnValue USBStorageProvider::format(string storageId, string fileSystem, stri
 {
     return nullptr;
 }
-
-fstream USBStorageProvider::getFileStream(string path, ios_base::openmode mode)
-{
-    fstream fs;
-    return fs;
-}
-
