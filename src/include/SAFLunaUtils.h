@@ -81,143 +81,143 @@
 
 namespace LSUtils
 {
-inline std::string generateRandomString( size_t length )
-{
-    auto randchar = []() -> char
+    inline std::string generateRandomString( size_t length )
     {
-        const char charset[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-        const size_t max_index = (sizeof(charset) - 1);
-        return charset[ rand() % max_index ];
-    };
-    std::string str(length,0);
-    std::generate_n( str.begin(), length, randchar );
-    return str;
-}
-
-inline bool generatePayload(const pbnjson::JValue &object, std::string &payload)
-{
-    pbnjson::JGenerator serializer(nullptr);
-    return serializer.toString(object, pbnjson::JSchema::AllSchema(), payload);
-}
-
-inline bool parsePayload(const std::string &payload, pbnjson::JValue &object)
-{
-    pbnjson::JSchema parseSchema = pbnjson::JSchema::AllSchema();
-    pbnjson::JDomParser parser;
-
-    if (!parser.parse(payload, parseSchema)) {
-        return false;
+        auto randchar = []() -> char
+        {
+            const char charset[] =
+            "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz";
+            const size_t max_index = (sizeof(charset) - 1);
+            return charset[ rand() % max_index ];
+        };
+        std::string str(length,0);
+        std::generate_n( str.begin(), length, randchar );
+        return str;
     }
 
-    object = parser.getDom();
-
-    return true;
-}
-
-
-inline bool parsePayload(const std::string &payload, pbnjson::JValue &object, const std::string &schema, int *error)
-{
-    pbnjson::JSchema parseSchema = pbnjson::JSchema::AllSchema();
-
-    if (schema.length() > 0)
+    inline bool generatePayload(const pbnjson::JValue &object, std::string &payload)
     {
-        parseSchema = pbnjson::JSchemaFragment(schema);
+        pbnjson::JGenerator serializer(nullptr);
+        return serializer.toString(object, pbnjson::JSchema::AllSchema(), payload);
     }
 
-    pbnjson::JDomParser parser;
-
-    if (!parser.parse(payload, parseSchema))
+    inline bool parsePayload(const std::string &payload, pbnjson::JValue &object)
     {
-        if (strstr(parser.getError(), "Schema error") != NULL) {
-            // notify this is a schema error, so that caller can make further
-            // checks for throwing custom errors (particular key missing, etc)
-            pbnjson::JSchema parseSchema = pbnjson::JSchema::AllSchema();
+        pbnjson::JSchema parseSchema = pbnjson::JSchema::AllSchema();
+        pbnjson::JDomParser parser;
 
-            if (parser.parse(payload, parseSchema))
-         {
-                *error = JSON_PARSE_SCHEMA_ERROR;
-                object = parser.getDom();
-            }
+        if (!parser.parse(payload, parseSchema)) {
+            return false;
         }
 
-        return false;
+        object = parser.getDom();
+
+        return true;
     }
 
-    object = parser.getDom();
-    return true;
-}
 
-inline void respondWithError(LS::Message &message, const std::string &errorText, unsigned int errorCode = -1,
-                             bool failedSubscription = false)
-{
-    pbnjson::JValue responseObj = pbnjson::Object();
+    inline bool parsePayload(const std::string &payload, pbnjson::JValue &object, const std::string &schema, int *error)
+    {
+        pbnjson::JSchema parseSchema = pbnjson::JSchema::AllSchema();
 
-    if (failedSubscription) {
-        responseObj.put("subscribed", false);
+        if (schema.length() > 0)
+        {
+            parseSchema = pbnjson::JSchemaFragment(schema);
+        }
+
+        pbnjson::JDomParser parser;
+
+        if (!parser.parse(payload, parseSchema))
+        {
+            if (strstr(parser.getError(), "Schema error") != NULL) {
+                // notify this is a schema error, so that caller can make further
+                // checks for throwing custom errors (particular key missing, etc)
+                pbnjson::JSchema parseSchema = pbnjson::JSchema::AllSchema();
+
+                if (parser.parse(payload, parseSchema))
+             {
+                    *error = JSON_PARSE_SCHEMA_ERROR;
+                    object = parser.getDom();
+                }
+            }
+
+            return false;
+        }
+
+        object = parser.getDom();
+        return true;
     }
 
-    responseObj.put("returnValue", false);
-    responseObj.put("errorText", errorText);
-    responseObj.put("errorCode", (int) errorCode);
+    inline void respondWithError(LS::Message &message, const std::string &errorText, unsigned int errorCode = -1,
+                                 bool failedSubscription = false)
+    {
+        pbnjson::JValue responseObj = pbnjson::Object();
 
-    std::string payload;
-    generatePayload(responseObj, payload);
+        if (failedSubscription) {
+            responseObj.put("subscribed", false);
+        }
 
-    message.respond(payload.c_str());
-}
+        responseObj.put("returnValue", false);
+        responseObj.put("errorText", errorText);
+        responseObj.put("errorCode", (int) errorCode);
 
-inline void respondWithErrorText(LS::Message &message, const std::string &errorText)
-{
-    pbnjson::JValue responseObj = pbnjson::Object();
+        std::string payload;
+        generatePayload(responseObj, payload);
 
-    responseObj.put("returnValue", false);
-    responseObj.put("errorText", errorText);
-
-    std::string payload;
-    generatePayload(responseObj, payload);
-
-    message.respond(payload.c_str());
-}
-
-inline void respondWithError(LSMessage *message, const std::string &errorText, unsigned int errorCode = -1)
-{
-    LS::Message msg(message);
-    respondWithError(msg, errorText, errorCode);
-}
-
-
-inline void postToSubscriptionPoint(LS::SubscriptionPoint *subscriptionPoint, pbnjson::JValue &object)
-{
-    std::string payload;
-    LSUtils::generatePayload(object, payload);
-
-    subscriptionPoint->post(payload.c_str());
-}
-
-inline void postToClient(LS::Message &message, pbnjson::JValue &object)
-{
-    std::string payload;
-    LSUtils::generatePayload(object, payload);
-
-    try {
         message.respond(payload.c_str());
-    } catch (LS::Error &error) {
-        // to put debug log
-    }
-}
-
-inline void postToClient(LSMessage *message, pbnjson::JValue &object)
-{
-    if (!message) {
-        return;
     }
 
-    LS::Message request(message);
-    postToClient(request, object);
-}
+    inline void respondWithErrorText(LS::Message &message, const std::string &errorText)
+    {
+        pbnjson::JValue responseObj = pbnjson::Object();
+
+        responseObj.put("returnValue", false);
+        responseObj.put("errorText", errorText);
+
+        std::string payload;
+        generatePayload(responseObj, payload);
+
+        message.respond(payload.c_str());
+    }
+
+    inline void respondWithError(LSMessage *message, const std::string &errorText, unsigned int errorCode = -1)
+    {
+        LS::Message msg(message);
+        respondWithError(msg, errorText, errorCode);
+    }
+
+
+    inline void postToSubscriptionPoint(LS::SubscriptionPoint *subscriptionPoint, pbnjson::JValue &object)
+    {
+        std::string payload;
+        LSUtils::generatePayload(object, payload);
+
+        subscriptionPoint->post(payload.c_str());
+    }
+
+    inline void postToClient(LS::Message &message, pbnjson::JValue &object)
+    {
+        std::string payload;
+        LSUtils::generatePayload(object, payload);
+
+        try {
+            message.respond(payload.c_str());
+        } catch (LS::Error &error) {
+            // to put debug log
+        }
+    }
+
+    inline void postToClient(LSMessage *message, pbnjson::JValue &object)
+    {
+        if (!message) {
+            return;
+        }
+
+        LS::Message request(message);
+        postToClient(request, object);
+    }
 
 } // namespace LSUtils
 

@@ -19,7 +19,7 @@ DocumentProviderManager::~DocumentProviderManager()
 {
 }
 
-ReturnValue DocumentProviderManager::listOfStoreages()
+ReturnValue DocumentProviderManager::listOfStorages()
 {
     shared_ptr<vector<StorageType>> storageProviders = DocumentProviderFactory::getSupportedDocumentProviders();
     shared_ptr<ContentList> storageList = make_shared<ContentList>();
@@ -44,20 +44,32 @@ ReturnValue DocumentProviderManager::listOfStoreages()
     return make_shared<ResultPair>(valueMap, storageList);
 }
 
-ReturnValue DocumentProviderManager::listFolderContents(StorageType storageType, string storageId, string path, int offset, int limit)
+ReturnValue DocumentProviderManager::attachCloud(StorageType storageType, AuthParam authParam)
 {
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
-    return provider->listFolderContents(storageId, path, offset, limit);
+    return provider->attachCloud(authParam);
 }
 
-ReturnValue DocumentProviderManager::getProperties(StorageType storageType)
+ReturnValue DocumentProviderManager::authenticateCloud(StorageType storageType, AuthParam authParam)
 {
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
-    return provider->getProperties();
+    return provider->authenticateCloud(authParam);
 }
 
-ReturnValue DocumentProviderManager::copy(StorageType srcStorageType, string srcStorageId, string srcPath,
-                            StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue DocumentProviderManager::listFolderContents(AuthParam authParam, StorageType storageType, string storageId, string path, int offset, int limit)
+{
+    shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
+    return provider->listFolderContents(authParam, storageId, path, offset, limit);
+}
+
+ReturnValue DocumentProviderManager::getProperties(AuthParam authParam, StorageType storageType)
+{
+    shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
+    return provider->getProperties(authParam);
+}
+
+ReturnValue DocumentProviderManager::copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath,
+                            AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
     shared_ptr<DocumentProvider> provider;
     if (srcStorageType == StorageType::GDRIVE) {
@@ -65,11 +77,11 @@ ReturnValue DocumentProviderManager::copy(StorageType srcStorageType, string src
     } else {
         provider = DocumentProviderFactory::createDocumentProvider(destStorageType);
     }
-    return provider->copy(srcStorageType, srcStorageId, srcPath, destStorageType, destStorageId, destPath, overwrite);
+    return provider->copy(srcAuthParam, srcStorageType, srcStorageId, srcPath, destAuthParam, destStorageType, destStorageId, destPath, overwrite);
 }
 
-ReturnValue DocumentProviderManager::move(StorageType srcStorageType, string srcStorageId, string srcPath,
-                            StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue DocumentProviderManager::move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath,
+                            AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
 {
     shared_ptr<DocumentProvider> provider;
     if (srcStorageType == StorageType::GDRIVE) {
@@ -77,13 +89,13 @@ ReturnValue DocumentProviderManager::move(StorageType srcStorageType, string src
     } else {
         provider = DocumentProviderFactory::createDocumentProvider(destStorageType);
     }
-    return provider->move(srcStorageType, srcStorageId, srcPath, destStorageType, destStorageId, destPath, overwrite);
+    return provider->move(srcAuthParam, srcStorageType, srcStorageId, srcPath, destAuthParam, destStorageType, destStorageId, destPath, overwrite);
 }
 
-ReturnValue DocumentProviderManager::remove(StorageType storageType, string storageId, string path)
+ReturnValue DocumentProviderManager::remove(AuthParam authParam, StorageType storageType, string storageId, string path)
 {
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
-    return provider->remove(storageId, path);
+    return provider->remove(authParam, storageId, path);
 }
 
 ReturnValue DocumentProviderManager::eject(StorageType storageType, string storageId)
@@ -97,3 +109,4 @@ ReturnValue DocumentProviderManager::format(StorageType storageType, string stor
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
     return provider->format(storageId,fileSystem,volumeLabel);
 }
+

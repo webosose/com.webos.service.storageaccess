@@ -24,11 +24,13 @@ class GDriveProvider: public DocumentProvider
 public:
     GDriveProvider();
     virtual ~GDriveProvider();
-    ReturnValue listFolderContents(string storageId, string path, int offset, int limit);
-    ReturnValue getProperties();
-    ReturnValue copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue remove(string storageId, string path);
+    ReturnValue attachCloud(AuthParam authParam);
+    ReturnValue authenticateCloud(AuthParam authParam);
+    ReturnValue listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit);
+    ReturnValue getProperties(AuthParam authParam);
+    ReturnValue copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue remove(AuthParam authParam, string storageId, string path);
     ReturnValue eject(string storageId);
     ReturnValue format(string storageId, string fileSystem, string volumeLabel);
 

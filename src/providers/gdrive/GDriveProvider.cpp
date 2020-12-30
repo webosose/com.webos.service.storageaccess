@@ -21,26 +21,36 @@ GDriveProvider::~GDriveProvider()
 {
 }
 
-ReturnValue GDriveProvider::listFolderContents(string storageId, string path, int offset, int limit)
+ReturnValue GDriveProvider::attachCloud(AuthParam authParam)
 {
     return nullptr;
 }
 
-ReturnValue GDriveProvider::getProperties() {
-    return nullptr;
-}
-
-ReturnValue GDriveProvider::copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue GDriveProvider::authenticateCloud(AuthParam authParam)
 {
     return nullptr;
 }
 
-ReturnValue GDriveProvider::move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue GDriveProvider::listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit)
 {
     return nullptr;
 }
 
-ReturnValue GDriveProvider::remove(string storageId, string path)
+ReturnValue GDriveProvider::getProperties(AuthParam authParam) {
+    return nullptr;
+}
+
+ReturnValue GDriveProvider::copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+{
+    return nullptr;
+}
+
+ReturnValue GDriveProvider::move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+{
+    return nullptr;
+}
+
+ReturnValue GDriveProvider::remove(AuthParam authParam, string storageId, string path)
 {
     return nullptr;
 }
@@ -54,5 +64,4 @@ ReturnValue GDriveProvider::format(string storageId, string fileSystem, string v
 {
     return nullptr;
 }
-
 

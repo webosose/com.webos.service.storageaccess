@@ -22,27 +22,36 @@ InternalStorageProvider::~InternalStorageProvider()
 {
 }
 
-ReturnValue InternalStorageProvider::listFolderContents(string storageId, string path, int offset, int limit)
+ReturnValue InternalStorageProvider::attachCloud(AuthParam authParam)
 {
     return nullptr;
 }
 
-ReturnValue InternalStorageProvider::getProperties() {
-    return nullptr;
-}
-
-ReturnValue InternalStorageProvider::copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue InternalStorageProvider::authenticateCloud(AuthParam authParam)
 {
     return nullptr;
 }
 
-ReturnValue InternalStorageProvider::move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue InternalStorageProvider::listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit)
 {
     return nullptr;
 }
 
+ReturnValue InternalStorageProvider::getProperties(AuthParam authParam) {
+    return nullptr;
+}
 
-ReturnValue InternalStorageProvider::remove(string storageId, string path)
+ReturnValue InternalStorageProvider::copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+{
+    return nullptr;
+}
+
+ReturnValue InternalStorageProvider::move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+{
+    return nullptr;
+}
+
+ReturnValue InternalStorageProvider::remove(AuthParam authParam, string storageId, string path)
 {
     return nullptr;
 }
@@ -56,3 +65,4 @@ ReturnValue InternalStorageProvider::format(string storageId, string fileSystem,
 {
     return nullptr;
 }
+

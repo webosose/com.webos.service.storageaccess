@@ -20,26 +20,37 @@ USBStorageProvider::~USBStorageProvider()
 {
 }
 
-ReturnValue USBStorageProvider::listFolderContents(string storageId, string path, int offset, int limit)
+ReturnValue USBStorageProvider::attachCloud(AuthParam authParam)
 {
     return nullptr;
 }
 
-ReturnValue USBStorageProvider::getProperties() {
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue USBStorageProvider::authenticateCloud(AuthParam authParam)
 {
     return nullptr;
 }
 
-ReturnValue USBStorageProvider::move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+ReturnValue USBStorageProvider::listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit)
 {
     return nullptr;
 }
 
-ReturnValue USBStorageProvider::remove(string storageId, string path)
+ReturnValue USBStorageProvider::getProperties(AuthParam authParam)
+{
+    return nullptr;
+}
+
+ReturnValue USBStorageProvider::copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+{
+    return nullptr;
+}
+
+ReturnValue USBStorageProvider::move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
+{
+    return nullptr;
+}
+
+ReturnValue USBStorageProvider::remove(AuthParam authParam, string storageId, string path)
 {
     return nullptr;
 }
@@ -53,3 +64,4 @@ ReturnValue USBStorageProvider::format(string storageId, string fileSystem, stri
 {
     return nullptr;
 }
+

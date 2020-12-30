@@ -27,14 +27,15 @@ class DocumentProvider
 public:
     DocumentProvider() = default;
     virtual ~DocumentProvider() = default;
-    virtual ReturnValue listFolderContents(string storageId, string path, int offset, int limit) = 0;
-    virtual ReturnValue getProperties() = 0;
-    virtual ReturnValue copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite) = 0;
-    virtual ReturnValue move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite) = 0;
-    virtual ReturnValue remove(string storageId, string path) = 0;
+    virtual ReturnValue attachCloud(AuthParam authParam) = 0;
+    virtual ReturnValue authenticateCloud(AuthParam authParam) = 0;
+    virtual ReturnValue listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit) = 0;
+    virtual ReturnValue getProperties(AuthParam authParam) = 0;
+    virtual ReturnValue copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite) = 0;
+    virtual ReturnValue move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite) = 0;
+    virtual ReturnValue remove(AuthParam srcAuthParam, string storageId, string path) = 0;
     virtual ReturnValue eject(string storageId) = 0;
     virtual ReturnValue format(string storageId, string fileSystem, string volumeLabel) = 0;
-   /* virtual ReturnValue Authendication(string deviceId) = 0;*/
 };
 
 #endif /* _DOCUMENT_PROVIDER_H_ */

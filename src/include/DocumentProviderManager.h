@@ -25,15 +25,16 @@ public:
     DocumentProviderManager();
     ~DocumentProviderManager();
 
-    ReturnValue listOfStoreages();
-    ReturnValue listFolderContents(StorageType storageType, string storageId, string path, int offset, int limit);
-    ReturnValue getProperties(StorageType storageType);
-    ReturnValue copy(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue move(StorageType srcStorageType, string srcStorageId, string srcPath, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue remove(StorageType storageType, string storageId, string path);
+    ReturnValue listOfStorages();
+    ReturnValue attachCloud(StorageType storageType, AuthParam authParam);
+    ReturnValue authenticateCloud(StorageType storageType, AuthParam authParam);
+    ReturnValue listFolderContents(AuthParam authParam, StorageType storageType, string storageId, string path, int offset, int limit);
+    ReturnValue getProperties(AuthParam authParam, StorageType storageType);
+    ReturnValue copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
+    ReturnValue remove(AuthParam srcAuthParam, StorageType storageType, string storageId, string path);
     ReturnValue eject(StorageType storageType, string storageId);
     ReturnValue format(StorageType storageType, string storageId, string fileSystem, string volumeLabel);
-    /*virtual bool Authendication(string deviceId) = 0;*/
 };
 
 #endif /* _DOCUMENT_PROVIDER_MANAGER_H_ */

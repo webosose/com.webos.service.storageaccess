@@ -28,13 +28,15 @@ class SAFLunaService: public LS::Handle, public StatusObserver
 public:
     SAFLunaService();
     virtual ~SAFLunaService();
+    bool attachCloud(LSMessage &message);
+    bool authenticateCloud(LSMessage &message);
     bool listFolderContents(LSMessage &message);
     bool getProperties(LSMessage &message);
     bool listOfStorages(LSMessage &message);
     bool copy(LSMessage &message);
     bool move(LSMessage &message);
-    bool eject(LSMessage &message);
     bool remove(LSMessage &message);
+    bool eject(LSMessage &message);
     bool format(LSMessage &message);
 
 private :

@@ -38,6 +38,8 @@ void SAFLunaService::registerService()
     LOG_DEBUG_SAF("Register Service\n");
     LS_CREATE_CATEGORY_BEGIN(SAFLunaService, rootAPI)
     LS_CATEGORY_METHOD(listFolderContents)
+    LS_CATEGORY_METHOD(attachCloud)
+    LS_CATEGORY_METHOD(authenticateCloud)
     LS_CATEGORY_METHOD(getProperties)
     LS_CATEGORY_METHOD(listOfStorages)
     LS_CATEGORY_METHOD(copy)
@@ -53,6 +55,18 @@ void SAFLunaService::registerService()
     } catch (LS::Error &lunaError) {
     }
     StatusHandler::GetInstance()->Register(this);
+}
+
+bool SAFLunaService::attachCloud(LSMessage &message)
+{
+    LS::Message request(&message);
+    return true;
+}
+
+bool SAFLunaService::authenticateCloud(LSMessage &message)
+{
+    LS::Message request(&message);
+    return true;
 }
 
 bool SAFLunaService::listFolderContents(LSMessage &message)

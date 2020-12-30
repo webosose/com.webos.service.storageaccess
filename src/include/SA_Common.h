@@ -47,5 +47,7 @@ typedef vector<shared_ptr<Content>> ContentList;
 typedef pair<shared_ptr<ValuePairMap>, shared_ptr<ContentList>> ResultPair;
 typedef shared_ptr<ResultPair> ReturnValue;
 
+typedef map<string, string> AuthParam;
+
 #endif /* SA_COMMON_H */
 

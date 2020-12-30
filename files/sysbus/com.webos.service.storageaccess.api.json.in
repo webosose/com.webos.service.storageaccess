@@ -1,5 +1,7 @@
 {
     "storageaccess.operation": [
+        "com.webos.service.storageaccess/attachCloud",
+        "com.webos.service.storageaccess/authenticateCloud",
         "com.webos.service.storageaccess/listFolderContents",
         "com.webos.service.storageaccess/getProperties",
         "com.webos.service.storageaccess/listOfStorages",
