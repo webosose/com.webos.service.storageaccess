@@ -28,23 +28,53 @@ void GDriveProvider::setErrorMessage(shared_ptr<ValuePairMap> valueMap, string e
     valueMap->emplace("errorText", pair<string, DataType>(errorText, DataType::STRING));
     valueMap->emplace("returnValue", pair<string, DataType>("false", DataType::BOOLEAN));
 }
-
 ReturnValue GDriveProvider::attachCloud(AuthParam authParam)
 {
     shared_ptr<ContentList> authentify = make_shared<ContentList>();
     shared_ptr<ValuePairMap> valueMap = make_shared<ValuePairMap>();
     std::string authURL = "";
 
-    //Actual Functionality Needs to added here
-
-    valueMap->emplace("authURL", pair<string, DataType>("http://google.com/Parmi", DataType::STRING));
-    LOG_DEBUG_SAF("GDriveProvider::attachCloud : Last Function Called");
+    Credential cred(&authParam);
+    if (authParam["refresh_token"] == "")
+    {
+        OAuth oauth(authParam["clientID"], authParam["clientSecret"]);
+        authURL = oauth.get_authorize_url();
+        LOG_DEBUG_SAF("========> authorize_url:%s", authURL.c_str());
+    }
+    if (authURL.empty())
+    {
+        valueMap->emplace("errorCode", pair<string, DataType>("-1", DataType::NUMBER));
+        valueMap->emplace("errorText", pair<string, DataType>("Invalid URL", DataType::STRING));
+        valueMap->emplace("returnValue", pair<string, DataType>("false", DataType::BOOLEAN));
+    }
+    else
+    {
+        valueMap->emplace("authURL", pair<string, DataType>(authURL, DataType::STRING));
+        //valueMap->emplace("returnValue", pair<string, DataType>("True", DataType::BOOLEAN));
+    }
     return make_shared<ResultPair>(valueMap, authentify);
 }
 
 ReturnValue GDriveProvider::authenticateCloud(AuthParam authParam)
 {
-    return nullptr;
+    shared_ptr<ContentList> authentify = make_shared<ContentList>();
+    shared_ptr<ValuePairMap> valueMap = make_shared<ValuePairMap>();
+    Credential cred(&authParam);
+    OAuth oauth(authParam["client_id"], authParam["client_secret"]);
+    
+    if (oauth.build_credential(authParam["secret_token"], cred))
+    {
+        valueMap->emplace("returnValue", pair<string, DataType>("true", DataType::BOOLEAN));
+        valueMap->emplace("refresh_token", pair<string, DataType>(authParam["refresh_token"], DataType::STRING));
+    }
+    else
+    {
+        LOG_DEBUG_SAF("===> AuthenticateCloud Failed");
+        valueMap->emplace("errorCode", pair<string, DataType>("-1", DataType::NUMBER));
+        valueMap->emplace("errorText", pair<string, DataType>("Invalid URL", DataType::STRING));
+        valueMap->emplace("returnValue", pair<string, DataType>("false", DataType::BOOLEAN));
+    }
+    return make_shared<ResultPair>(valueMap, authentify);
 }
 
 ReturnValue GDriveProvider::listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit)
