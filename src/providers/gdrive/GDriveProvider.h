@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020 LG Electronics, Inc.
+ * Copyright (c) 2021 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -16,8 +16,13 @@
 #include "DocumentProvider.h"
 #include "DocumentProviderFactory.h"
 #include <iostream>
+#include "gdrive/gdrive.hpp"
+#include <assert.h>
+#include <vector>
+#include <SAFLog.h>
 
 using namespace std;
+using namespace GDRIVE;
 
 class GDriveProvider: public DocumentProvider
 {
@@ -35,6 +40,10 @@ public:
     ReturnValue format(string storageId, string fileSystem, string volumeLabel);
 
 private:
+    void getFilesFromPath(vector<string> &, const string&);
+    string getFileID(Drive, const vector<string>&);
+    void copyFileinGDrive(Drive, string, string, string);
+    void setErrorMessage(shared_ptr<ValuePairMap>, string);
 };
 
 #endif /* _GDRIVE_PROVIDER_H_ */
