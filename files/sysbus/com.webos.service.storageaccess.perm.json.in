@@ -1,5 +1,5 @@
 {
-    "public": [
-        "com.webos.service.storageaccess"
+    "com.webos.service.storageaccess": [
+        "all"
     ]
 }

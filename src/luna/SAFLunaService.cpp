@@ -1,4 +1,4 @@
-// Copyright (c) 2020 LG Electronics, Inc.
+// Copyright (c) 2020-2021 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,6 +60,91 @@ void SAFLunaService::registerService()
 bool SAFLunaService::attachCloud(LSMessage &message)
 {
     LS::Message request(&message);
+
+    LOG_TRACE("Entering function %s", __FUNCTION__);
+    pbnjson::JValue requestObj;
+    std::string payload;
+    std::string clientID;
+    std::string clientSecret;
+    int parseError = 0;
+    int storageType = 0;
+
+    ReturnValue retValue;
+    AuthParam authParam;
+
+    LOG_DEBUG_SAF("attachCloud : Before Schema check");
+    const std::string schema = STRICT_SCHEMA(PROPS_3(PROP(storageType, integer), PROP(clientID, string), PROP(clientSecret, string))REQUIRED_3(storageType, clientID, clientSecret));
+
+    LOG_DEBUG_SAF("attachCloud : Schema = %s", schema.c_str());
+
+    if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
+    {
+        LOG_DEBUG_SAF("attachCloud : Invalid Json Format Error");
+        const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
+        LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
+        return true;
+    }
+    StorageType storage_type;
+    if (requestObj["storageType"].asNumber<int>(storageType) == CONV_OK)
+    {
+        switch(storageType)
+        {
+            case 0:
+                storage_type = StorageType::INTERNAL;
+                LOG_DEBUG_SAF("attachCloud : storageType = 0 && storage_type = %d", storage_type);
+                break;
+            case 1:
+                storage_type = StorageType::USB;
+                LOG_DEBUG_SAF("attachCloud : storageType = 1 && storage_type = %d", storage_type);
+                break;
+            case 2:
+                storage_type = StorageType::GDRIVE;
+                LOG_DEBUG_SAF("attachCloud : storageType = 2 && storage_type = %d", storage_type);
+                break;
+            default:
+                LOG_DEBUG_SAF("attachCloud : Invalid storageType");
+        }
+    }
+    clientID = requestObj["clientID"].asString();
+    clientSecret = requestObj["clientSecret"].asString();
+    if (!clientID.empty() && !clientSecret.empty())
+    {
+        authParam["clientID"] = clientID;
+        authParam["clientSecret"] = clientSecret;
+        retValue = mDocumentProviderManager->attachCloud(storage_type, authParam);
+    }
+
+    pbnjson::JValue responseObj = pbnjson::Object();
+    shared_ptr<ValuePairMap> valuPairmapPtr = retValue->first;
+    shared_ptr<ContentList> contentListPtr = retValue->second;
+
+    for (auto itr = valuPairmapPtr->begin(); itr != valuPairmapPtr->end(); ++itr)
+    {
+        std::string firstObj = itr->first;
+        ValuePair secondObj = itr->second;
+        string secondObj_str = secondObj.first;
+        auto secondObj_DataType = secondObj.second;
+        LOG_DEBUG_SAF("attachCloud : Map -> firstObj = [ %s ]", firstObj.c_str());
+        LOG_DEBUG_SAF("attachCloud : Map -> secondObj__str = %s", secondObj_str.c_str());
+        LOG_DEBUG_SAF("attachCloud : Map -> secondObj_DataType = %d", secondObj_DataType);
+        responseObj.put("AuthURL", secondObj_str);
+    }
+
+    for (auto itr = contentListPtr->begin(); itr != contentListPtr->end(); ++itr)
+    {
+        shared_ptr<Storage> storage = dynamic_pointer_cast<Storage>(*itr);
+        if(storage != nullptr)
+        {
+            LOG_DEBUG_SAF("attachCloud : Storage->Id = %s", storage->id.c_str());
+            LOG_DEBUG_SAF("attachCloud : Storage->name = %s", storage->name.c_str());
+        }
+    }
+
+    responseObj.put("returnValue", true);
+    LSUtils::generatePayload(responseObj, payload);
+    request.respond(payload.c_str());
+
+    LOG_DEBUG_SAF("attachCloud : clientID = %s && clientSecret = %s", clientID.c_str(), clientSecret.c_str());
     return true;
 }
 

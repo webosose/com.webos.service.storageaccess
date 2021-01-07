@@ -19,6 +19,7 @@
 
 #include <luna-service2/lunaservice.hpp>
 #include <StatusHandler.h>
+#include <DocumentProviderManager.h>
 #include <SAFLunaUtils.h>
 #include <SAFErrors.h>
 #include <SAFLog.h>
@@ -40,6 +41,7 @@ public:
     bool format(LSMessage &message);
 
 private :
+    std::shared_ptr<DocumentProviderManager> mDocumentProviderManager;
     static LSHandle* lsHandle;
 
     void registerService();

@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020 LG Electronics, Inc.
+ * Copyright (c) 2020-2021 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -10,6 +10,7 @@
  *
  * LICENSE@@@ */
 
+#include <SAFLog.h>
 #include "DocumentProviderManager.h"
 
 DocumentProviderManager::DocumentProviderManager()
@@ -46,6 +47,7 @@ ReturnValue DocumentProviderManager::listOfStorages()
 
 ReturnValue DocumentProviderManager::attachCloud(StorageType storageType, AuthParam authParam)
 {
+    LOG_DEBUG_SAF("DocumentProviderManager::attachCloud : storageType = %d", storageType);
     shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(storageType);
     return provider->attachCloud(authParam);
 }

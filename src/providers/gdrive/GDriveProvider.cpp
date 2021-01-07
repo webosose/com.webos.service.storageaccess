@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020 LG Electronics, Inc.
+ * Copyright (c) 2020-2021 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -11,10 +11,12 @@
  * LICENSE@@@ */
 
 
+#include <SAFLog.h>
 #include "GDriveProvider.h"
 
 GDriveProvider::GDriveProvider()
 {
+    LOG_DEBUG_SAF(" GDriveProvider::GDriveProvider : Constructor Created");
 }
 
 GDriveProvider::~GDriveProvider()
@@ -23,7 +25,15 @@ GDriveProvider::~GDriveProvider()
 
 ReturnValue GDriveProvider::attachCloud(AuthParam authParam)
 {
-    return nullptr;
+    shared_ptr<ContentList> authentify = make_shared<ContentList>();
+    shared_ptr<ValuePairMap> valueMap = make_shared<ValuePairMap>();
+    std::string authURL = "";
+
+    //Actual Functionality Needs to added here
+
+    valueMap->emplace("authURL", pair<string, DataType>("http://google.com/Parmi", DataType::STRING));
+    LOG_DEBUG_SAF("GDriveProvider::attachCloud : Last Function Called");
+    return make_shared<ResultPair>(valueMap, authentify);
 }
 
 ReturnValue GDriveProvider::authenticateCloud(AuthParam authParam)
