@@ -350,7 +350,7 @@ StorageType SAFLunaService::getStorageDeviceType(pbnjson::JValue jsonObj)
 {
     int storageTypeInt = -1;
     StorageType storageType = StorageType::INVALID;
-    if (jsonObj["storageType"].asNumber<int>(storageTypeInt) == CONV_OK) {
+    if (!jsonObj.isNull() && jsonObj["storageType"].isNumber() && jsonObj["storageType"].asNumber<int>(storageTypeInt) == CONV_OK) {
         switch (storageTypeInt) {
         case 0:
             storageType = StorageType::INTERNAL;
@@ -363,7 +363,7 @@ StorageType SAFLunaService::getStorageDeviceType(pbnjson::JValue jsonObj)
             break;
         default:
             storageType = StorageType::INVALID;
-            LOG_DEBUG_SAF("attachCloud : Invalid storageType");
+            LOG_DEBUG_SAF("getStorageDeviceType : Invalid storageType");
         }
     }
     return storageType;

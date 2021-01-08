@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021 LG Electronics, Inc.
+ * Copyright (c) 2020-2021 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -41,9 +41,10 @@ public:
 
 private:
     void getFilesFromPath(vector<string> &, const string&);
-    string getFileID(Drive, const vector<string>&);
-    void copyFileinGDrive(Drive, string, string, string);
     bool copyFilefromInternaltoGDrive(Drive, string, string, string);
+    bool copyFilefromGDrivetoInternal(AuthParam, Drive, string, string);
+    void copyFileinGDrive(Drive, string, string, string);
+    string getFileID(Drive, const vector<string>&);
     void insertMimeTypes();
     string getMimeType(string);
     void setErrorMessage(shared_ptr<ValuePairMap>, string);

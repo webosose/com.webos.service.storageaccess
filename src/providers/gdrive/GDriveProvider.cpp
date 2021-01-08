@@ -223,7 +223,24 @@ ReturnValue GDriveProvider::copy(AuthParam srcAuthParam, StorageType srcStorageT
             setErrorMessage(valueMap,"Invalid destination Path");
         }
     } else if((srcStorageType == StorageType::GDRIVE) && (destStorageType == StorageType::INTERNAL || destStorageType == StorageType::USB)) {
-
+        if(srcFileID != "" && destPath != "") {
+            srcFilesVec.push_back(destPath.substr(destPath.rfind("/")+1));
+            string fileID = (srcFilesVec.size() >0) ? getFileID(service, srcFilesVec) : "";
+            if (overwrite) {
+                if(fileID != "")
+                    service.files().Delete(fileID).execute();
+            }else {
+                if(fileID != "") {
+                    setErrorMessage(valueMap,"File Already exist");
+                    return make_shared<ResultPair>(valueMap, contentList);
+                }
+            }
+            if(!copyFilefromGDrivetoInternal(srcAuthParam, service, srcFileID, destPath)) {
+                setErrorMessage(valueMap,"Invalid Destination Path");
+            }
+        } else {
+            setErrorMessage(valueMap,"Invalid Source Path");
+        }
     } else{
         setErrorMessage(valueMap,"Invalid storage type");
     }
@@ -382,6 +399,24 @@ bool GDriveProvider::copyFilefromInternaltoGDrive(Drive service, string srcPath,
     insertFile.set_mimeType(mimeType);
     service.files().Insert(&insertFile, &fc).execute();
     fin.close();
+    return true;
+}
+
+bool GDriveProvider::copyFilefromGDrivetoInternal(AuthParam authParam, Drive service, string srcFileID, string destPath) {
+    GFile downloadFile = service.files().Get(srcFileID).execute();
+    string url = downloadFile.get_downloadUrl();
+    if (url == "") {
+        url = downloadFile.get_exportLinks()["application/pdf"];
+    }
+    Credential cred(&authParam);
+    CredentialHttpRequest request(&cred, url, RM_GET);
+    HttpResponse resp = request.request();
+    ofstream fout(destPath.c_str(), std::ios::binary);
+    if(!fout.good()) {
+        return false;
+    }
+    fout.write(resp.content().c_str(), resp.content().size());
+    fout.close();
     return true;
 }
 
