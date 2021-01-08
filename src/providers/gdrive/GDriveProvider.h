@@ -43,7 +43,12 @@ private:
     void getFilesFromPath(vector<string> &, const string&);
     string getFileID(Drive, const vector<string>&);
     void copyFileinGDrive(Drive, string, string, string);
+    bool copyFilefromInternaltoGDrive(Drive, string, string, string);
+    void insertMimeTypes();
+    string getMimeType(string);
     void setErrorMessage(shared_ptr<ValuePairMap>, string);
+
+    map<string, string> mimetypesMap;
 };
 
 #endif /* _GDRIVE_PROVIDER_H_ */

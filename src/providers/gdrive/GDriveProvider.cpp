@@ -16,6 +16,7 @@
 GDriveProvider::GDriveProvider()
 {
     LOG_DEBUG_SAF(" GDriveProvider::GDriveProvider : Constructor Created");
+    insertMimeTypes();
 }
 
 GDriveProvider::~GDriveProvider()
@@ -165,7 +166,7 @@ ReturnValue GDriveProvider::copy(AuthParam srcAuthParam, StorageType srcStorageT
 {
     shared_ptr<ContentList> contentList = make_shared<ContentList>();
     shared_ptr<ValuePairMap> valueMap = make_shared<ValuePairMap>();
-    if (srcAuthParam["refresh_token"] == "") {
+    if (srcAuthParam["refresh_token"].empty()) {
         setErrorMessage(valueMap, "Authentication Not Done");
         return make_shared<ResultPair>(valueMap, contentList);
     }
@@ -179,14 +180,15 @@ ReturnValue GDriveProvider::copy(AuthParam srcAuthParam, StorageType srcStorageT
     string srcFileID = (srcFilesVec.size() > 0) ? getFileID(service, srcFilesVec) : "";
     string destFolderId = (destFilesVec.size() > 0) ? getFileID(service, destFilesVec) : "";
 
-    if (srcStorageType == destStorageType) {
-        if (srcFileID != "") {
-            destFilesVec.push_back(srcFilesVec.at(srcFilesVec.size() - 1));
-            string fileID = (destFilesVec.size() > 0) ? getFileID(service, destFilesVec) : "";
+    if(srcStorageType == destStorageType)
+    {
+        if(!srcFileID.empty() && !destFolderId.empty()) {
+            destFilesVec.push_back(srcFilesVec.at(srcFilesVec.size()-1));
+            string fileID = (destFilesVec.size() >0) ? getFileID(service, destFilesVec) : "";
             if (overwrite) {
-                if (fileID != "") service.files().Delete(fileID).execute();
+                if (!fileID.empty()) service.files().Delete(fileID).execute();
             } else {
-                if (fileID != "") {
+                if (!fileID.empty()) {
                     setErrorMessage(valueMap, "File Already exist");
                     return make_shared<ResultPair>(valueMap, contentList);
                 }
@@ -194,9 +196,36 @@ ReturnValue GDriveProvider::copy(AuthParam srcAuthParam, StorageType srcStorageT
             string title = srcFilesVec.at(srcFilesVec.size() - 1);
             copyFileinGDrive(service, srcFileID, destFolderId, title);
         } else {
-            setErrorMessage(valueMap, "Invalid Source Path");
+            setErrorMessage(valueMap,"Invalid source/destination Path");
         }
-    } else {
+    } else if((destStorageType == StorageType::GDRIVE) && (srcStorageType == StorageType::INTERNAL || srcStorageType == StorageType::USB)) {
+        if(!destFolderId.empty() && !srcPath.empty()) {
+            destFilesVec.push_back(srcPath.substr(srcPath.rfind("/")+1));
+            string fileID = (destFilesVec.size() >0) ? getFileID(service, destFilesVec) : "";
+            if (overwrite) {
+                if(!fileID.empty())
+                    service.files().Delete(fileID).execute();
+            }else {
+                if(!fileID.empty()) {
+                    setErrorMessage(valueMap,"File Already exist");
+                    return make_shared<ResultPair>(valueMap, contentList);
+                }
+            }
+            string fileType = srcPath.substr(srcPath.rfind(".")+1);
+            if(mimetypesMap.find(fileType) != mimetypesMap.end()) {
+                if(!copyFilefromInternaltoGDrive(service, srcPath, destFolderId, getMimeType(fileType))) {
+                    setErrorMessage(valueMap,"Invalid source Path");
+                }
+            } else {
+                setErrorMessage(valueMap,"Invalid File Format");
+            }
+        }else {
+            setErrorMessage(valueMap,"Invalid destination Path");
+        }
+    } else if((srcStorageType == StorageType::GDRIVE) && (destStorageType == StorageType::INTERNAL || destStorageType == StorageType::USB)) {
+
+    } else{
+        setErrorMessage(valueMap,"Invalid storage type");
     }
     return make_shared<ResultPair>(valueMap, contentList);
 }
@@ -206,7 +235,7 @@ ReturnValue GDriveProvider::move(AuthParam srcAuthParam, StorageType srcStorageT
 {
     shared_ptr<ContentList> contentList = make_shared<ContentList>();
     shared_ptr<ValuePairMap> valueMap = make_shared<ValuePairMap>();
-    if (srcAuthParam["refresh_token"] == "") {
+    if (srcAuthParam["refresh_token"].empty()) {
         valueMap->emplace("errorCode", pair<string, DataType>("-1", DataType::NUMBER));
         valueMap->emplace("errorText", pair<string, DataType>("Authentication Not Done", DataType::STRING));
         valueMap->emplace("returnValue", pair<string, DataType>("false", DataType::BOOLEAN));
@@ -222,11 +251,11 @@ ReturnValue GDriveProvider::move(AuthParam srcAuthParam, StorageType srcStorageT
     string srcFileID = (srcFilesVec.size() > 0) ? getFileID(service,srcFilesVec) : "";
     string destFolderId = (destFilesVec.size() > 0) ? getFileID(service,destFilesVec) : "";
 
-    if (!(srcFileID == "")) {
+    if (!srcFileID.empty()) {
         GParent obj;
         vector<GParent> vec;
         GFile *movedFile = new GFile();
-        if (!(destFolderId == "")) {
+        if (!destFolderId.empty()) {
             obj.set_id(destFolderId); //setting parent object to folder id
         } else {
             obj.set_id("root"); //setting parent object to folder id
@@ -249,7 +278,7 @@ ReturnValue GDriveProvider::remove(AuthParam authParam, string storageId, string
     shared_ptr<ContentList> contentList = make_shared<ContentList>();
     shared_ptr<ValuePairMap> valueMap = make_shared<ValuePairMap>();
 
-    if (authParam["refresh_token"] == "") {
+    if (authParam["refresh_token"].empty()) {
         valueMap->emplace("errorCode", pair<string, DataType>("-1", DataType::NUMBER));
         valueMap->emplace("errorText", pair<string, DataType>("Authentication Not Done", DataType::STRING));
         valueMap->emplace("returnValue", pair<string, DataType>("false", DataType::BOOLEAN));
@@ -262,7 +291,7 @@ ReturnValue GDriveProvider::remove(AuthParam authParam, string storageId, string
     getFilesFromPath(PathVec, path);
     string fileId = (PathVec.size() > 0) ? getFileID(service,PathVec) : "";
     LOG_DEBUG_SAF("========>FileID:%s", fileId.c_str());
-    if (!(fileId == "")) {
+    if (!fileId.empty()) {
         vector<GFile> files;
         service.files().Delete(fileId).execute();
         valueMap->emplace("Response", pair<string, DataType>("File Deleted", DataType::STRING));
@@ -285,12 +314,44 @@ ReturnValue GDriveProvider::format(string storageId, string fileSystem, string v
     return nullptr;
 }
 
-void GDriveProvider::copyFileinGDrive(Drive service, string srcFileID, string destFolderId, string title)
-{
+void GDriveProvider::insertMimeTypes() {
+    mimetypesMap.insert({"xls","application/vnd.ms-excel"});
+    mimetypesMap.insert({"xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    mimetypesMap.insert({"xml","text/xml"});
+    mimetypesMap.insert({"ods","application/vnd.oasis.opendocument.spreadsheet"});
+    mimetypesMap.insert({"csv","text/plain"});
+    mimetypesMap.insert({"tmpl","text/plain"});
+    mimetypesMap.insert({"pdf","application/pdf"});
+    mimetypesMap.insert({"php","application/x-httpd-php"});
+    mimetypesMap.insert({"jpg","image/jpeg"});
+    mimetypesMap.insert({"png","image/png"});
+    mimetypesMap.insert({"gif","image/gif"});
+    mimetypesMap.insert({"bmp","image/bmp"});
+    mimetypesMap.insert({"txt","text/plain"});
+    mimetypesMap.insert({"doc","application/msword"});
+    mimetypesMap.insert({"js","text/js"});
+    mimetypesMap.insert({"swf","application/x-shockwave-flash"});
+    mimetypesMap.insert({"mp3","audio/mpeg"});
+    mimetypesMap.insert({"zip","application/zip"});
+    mimetypesMap.insert({"rar","application/rar"});
+    mimetypesMap.insert({"tar","application/tar"});
+    mimetypesMap.insert({"arj","application/arj"});
+    mimetypesMap.insert({"cab","application/cab"});
+    mimetypesMap.insert({"html","text/html"});
+    mimetypesMap.insert({"htm","text/html"});
+    mimetypesMap.insert({"default","application/octet-stream"});
+    mimetypesMap.insert({"folder","application/vnd.google-apps.folder"});
+}
+
+string GDriveProvider::getMimeType(string fileType) {
+    return mimetypesMap[fileType];
+}
+
+void GDriveProvider::copyFileinGDrive(Drive service, string srcFileID, string destFolderId, string title) {
     GParent obj;
     vector<GParent> vec;
     GFile copiedFile;
-    if (!(destFolderId == "")) {
+    if (!destFolderId.empty()) {
         obj.set_id(destFolderId);
     } else {
         obj.set_id("root");
@@ -301,13 +362,36 @@ void GDriveProvider::copyFileinGDrive(Drive service, string srcFileID, string de
     service.files().Copy(srcFileID, &copiedFile).execute();
 }
 
-void GDriveProvider::getFilesFromPath(vector<string> &filesVec, const string& path)
-{
+bool GDriveProvider::copyFilefromInternaltoGDrive(Drive service, string srcPath, string destFolderId, string mimeType) {
+    ifstream fin(srcPath.c_str());
+    if (!fin.good()) {
+        return false;
+    }
+    FileContent fc(fin, mimeType);
+    GFile insertFile;
+    GParent obj;
+    vector<GParent> vec;
+    if(!destFolderId.empty()) {
+        obj.set_id(destFolderId);
+    } else {
+        obj.set_id("root");
+    }
+    vec.push_back(obj);
+    insertFile.set_parents(vec);
+    insertFile.set_title(srcPath.substr(srcPath.rfind("/")+1));
+    insertFile.set_mimeType(mimeType);
+    service.files().Insert(&insertFile, &fc).execute();
+    fin.close();
+    return true;
+}
+
+void GDriveProvider::getFilesFromPath(vector<string> &filesVec, const string& path){
     size_t start;
     size_t end = 0;
     char delim = '/';
     filesVec.push_back("root");
-    while ((start = path.find_first_not_of(delim, end)) != string::npos) {
+    while ((start = path.find_first_not_of(delim, end)) != string::npos)
+    {
         end = path.find(delim, start);
         filesVec.push_back(path.substr(start, end - start));
     }
