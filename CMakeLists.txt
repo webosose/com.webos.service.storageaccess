@@ -46,7 +46,11 @@ if (USE_PMLOG)
     webos_add_compiler_flags(ALL ${PMLOGLIB_CFLAGS_OTHER})
 endif()
 
-include_directories(src/include)
+set(INC_FILES
+    src/include
+    src/providers/gdrive/include
+    )
+include_directories(${INC_FILES})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 file(GLOB SAF_SOURCE
@@ -67,10 +71,12 @@ set(LIBS
     ${PMLOGLIB_LDFLAGS}
     ${PBNJSON_CPP_LDFLAGS}
     -lpthread
+    -lcurl
     -Wl,--no-as-needed
     )
 
-target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS})
+set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs)
+target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}  ${GDRIVE_LIBS}/libjconer.a ${GDRIVE_LIBS}/libgdrive.a)
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
 
