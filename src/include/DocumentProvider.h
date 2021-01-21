@@ -36,6 +36,8 @@ public:
     virtual ReturnValue remove(AuthParam srcAuthParam, string storageId, string path) = 0;
     virtual ReturnValue eject(string storageId) = 0;
     virtual ReturnValue format(string storageId, string fileSystem, string volumeLabel) = 0;
+
+	virtual void addRequest(std::shared_ptr<RequestData>&) = 0;
 };
 
 #endif /* _DOCUMENT_PROVIDER_H_ */

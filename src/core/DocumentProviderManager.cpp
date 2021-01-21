@@ -112,3 +112,10 @@ ReturnValue DocumentProviderManager::format(StorageType storageType, string stor
     return provider->format(storageId,fileSystem,volumeLabel);
 }
 
+void DocumentProviderManager::addRequest(std::shared_ptr<RequestData>& reqData)
+{
+	shared_ptr<DocumentProvider> provider = DocumentProviderFactory::createDocumentProvider(reqData->storageType);
+	return provider->addRequest(reqData);
+}
+
+

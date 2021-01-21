@@ -37,6 +37,7 @@ void SAFLunaService::registerService()
 {
     LOG_DEBUG_SAF("Register Service\n");
     LS_CREATE_CATEGORY_BEGIN(SAFLunaService, rootAPI)
+	LS_CATEGORY_METHOD(testMethod)
     LS_CATEGORY_METHOD(listFolderContents)
     LS_CATEGORY_METHOD(attachCloud)
     LS_CATEGORY_METHOD(authenticateCloud)
@@ -55,6 +56,42 @@ void SAFLunaService::registerService()
     } catch (LS::Error &lunaError) {
     }
     StatusHandler::GetInstance()->Register(this);
+}
+
+void SAFLunaService::getSubsDropped(void)
+{
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+	return;
+}
+
+bool SAFLunaService::testMethod(LSMessage &message)
+{
+	LS::Message request(&message);
+	LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+
+	pbnjson::JValue requestObj;
+	std::string value;
+	int parseError = 0;
+	int storageType = 0;
+	const std::string schema = STRICT_SCHEMA(PROPS_2(PROP(storageType, integer), PROP(value, string))REQUIRED_2(storageType, value));
+	if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
+	{
+		LOG_DEBUG_SAF("%s: Invalid Json Format Error", __FUNCTION__);
+		const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
+		LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
+		return true;
+	}
+	std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
+	REQUEST_BUILDER(reqData, MethodType::TEST_METHOD, requestObj, SAFLunaService::onTestMethodReply)
+	mDocumentProviderManager->addRequest(reqData);
+	return true;
+}
+
+void SAFLunaService::onTestMethodReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs)
+{
+	LOG_TRACE("Entering function %s", __FUNCTION__);
+	// Fill Reply Object from Root Object and send
+	LSUtils::postToClient(subs->getMessage(), rootObj);
 }
 
 bool SAFLunaService::attachCloud(LSMessage &message)

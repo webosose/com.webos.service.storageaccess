@@ -35,6 +35,8 @@ public:
     ReturnValue remove(AuthParam srcAuthParam, StorageType storageType, string storageId, string path);
     ReturnValue eject(StorageType storageType, string storageId);
     ReturnValue format(StorageType storageType, string storageId, string fileSystem, string volumeLabel);
+
+	void addRequest(std::shared_ptr<RequestData>&);
 };
 
 #endif /* _DOCUMENT_PROVIDER_MANAGER_H_ */

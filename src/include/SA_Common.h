@@ -16,6 +16,8 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <functional>
+#include "ClientWatch.h"
 
 using namespace std;
 
@@ -49,6 +51,27 @@ typedef pair<shared_ptr<ValuePairMap>, shared_ptr<ContentList>> ResultPair;
 typedef shared_ptr<ResultPair> ReturnValue;
 
 typedef map<string, string> AuthParam;
+
+enum class MethodType {
+	TEST_METHOD
+};
+
+class RequestData {
+public:
+	std::function<void(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>)> cb;
+	StorageType storageType;
+	MethodType	methodType;
+	pbnjson::JValue params;
+	std::shared_ptr<LSUtils::ClientWatch> subs;
+};
+
+class ReqContext
+{
+public:
+	void *ctx;
+	std::shared_ptr<RequestData> reqData;
+};
+
 
 #endif /* SA_COMMON_H */
 

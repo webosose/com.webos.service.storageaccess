@@ -17,6 +17,7 @@ DocumentProviderFactory::Registrator<USBStorageProviderFactory> factoryUSBStorag
 
 std::shared_ptr<DocumentProvider> USBStorageProviderFactory::create(void) const
 {
-    return std::make_shared<USBStorageProvider> ();
+	static std::shared_ptr<DocumentProvider> obj = std::make_shared<USBStorageProvider> ();
+    return obj;
 }
 

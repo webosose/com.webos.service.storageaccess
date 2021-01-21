@@ -39,6 +39,8 @@ public:
     ReturnValue eject(string storageId);
     ReturnValue format(string storageId, string fileSystem, string volumeLabel);
 
+	void addRequest(std::shared_ptr<RequestData>&) {}
+
 private:
     void getFilesFromPath(vector<string> &, const string&);
     bool copyFilefromInternaltoGDrive(Drive, string, string, string);

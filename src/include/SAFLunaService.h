@@ -25,6 +25,15 @@
 #include <SAFLog.h>
 #include <stdbool.h>
 #include <pbnjson.h>
+#include "ClientWatch.h"
+
+#define REQUEST_BUILDER(OBJ, TYPE, PARAMS, CB) \
+	OBJ->storageType = getStorageDeviceType(PARAMS); \
+	OBJ->params = PARAMS; \
+	OBJ->cb = std::bind(&CB, this, std::placeholders::_1, std::placeholders::_2); \
+	OBJ->methodType = TYPE; \
+	std::function<void(void)> fun = std::bind(&SAFLunaService::getSubsDropped, this); \
+	OBJ->subs = std::shared_ptr<LSUtils::ClientWatch>(new LSUtils::ClientWatch(this->get(), request.get(), fun));
 
 class SAFLunaService: public LS::Handle, public StatusObserver
 {
@@ -43,9 +52,12 @@ public:
     bool format(LSMessage &message);
     StorageType getStorageDeviceType(pbnjson::JValue jsonObj);
 
+	bool testMethod(LSMessage &message);
+	void onTestMethodReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+	void getSubsDropped(void);
+	static LSHandle* lsHandle;
 private :
     std::shared_ptr<DocumentProviderManager> mDocumentProviderManager;
-    static LSHandle* lsHandle;
     AuthParam mAuthParam;
 
     void registerService();

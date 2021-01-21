@@ -54,9 +54,9 @@ include_directories(${INC_FILES})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 file(GLOB SAF_SOURCE
+        ${CMAKE_SOURCE_DIR}/src/utils/*.cpp
         ${CMAKE_SOURCE_DIR}/src/luna/*.cpp
         ${CMAKE_SOURCE_DIR}/src/core/*.cpp
-        ${CMAKE_SOURCE_DIR}/src/utils/*.cpp
 	${CMAKE_SOURCE_DIR}/src/providers/gdrive/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/usb/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/internal/*.cpp
