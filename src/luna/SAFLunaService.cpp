@@ -16,6 +16,7 @@
 
 #include <string>
 #include <SAFLunaService.h>
+#include "USBJsonParser.h"
 
 const std::string service_name = "com.webos.service.storageaccess";
 
@@ -266,16 +267,24 @@ bool SAFLunaService::getProperties(LSMessage &message)
     return true;
 }
 
-bool SAFLunaService::listOfStorages(LSMessage &message)
+void SAFLunaService::onListOfStoragesReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs)
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
+    USBPbnJsonParser parser;
+    pbnjson::JValue responseObj = parser.ParseListOfStorages(rootObj);
+    LSUtils::postToClient(subs->getMessage(), responseObj);
+}
+
+bool SAFLunaService::listOfStorages(LSMessage &message)
+{
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
 
     LS::Message request(&message);
     pbnjson::JValue requestObj;
+    std::string value;
     int parseError = 0;
-    std::string payload;
 
-    const std::string schema = STRICT_SCHEMA(PROPS_1(PROP(folderPath, string))REQUIRED_1(folderPath));
+    const std::string schema = STRICT_SCHEMA(PROPS_2(PROP(storageType, integer),PROP(subscribe, boolean))REQUIRED_2(storageType,subscribe));
 
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
@@ -284,14 +293,9 @@ bool SAFLunaService::listOfStorages(LSMessage &message)
         return true;
     }
 
-    std::string folderPathString = requestObj["folderPath"].asString();
-    LOG_DEBUG_SAF("getProperties : Folder Path : %s", folderPathString.c_str());
-
-    pbnjson::JValue responseObj = pbnjson::Object();
-    responseObj.put("returnValue", true);
-
-    LSUtils::generatePayload(responseObj, payload);
-    request.respond(payload.c_str());
+    std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
+    REQUEST_BUILDER(reqData, MethodType::LIST_STORAGES_METHOD, requestObj, SAFLunaService::onListOfStoragesReply)
+    mDocumentProviderManager->addRequest(reqData);
     return true;
 }
 

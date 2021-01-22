@@ -17,6 +17,12 @@
 #include "SA_Common.h"
 #include "SAFLunaService.h"
 
+#define SAF_USB_ATTACH_METHOD  "luna://com.webos.service.pdm/getAttachedStorageDeviceList"
+#define SAF_USB_WRITE_Q_METHOD "luna://com.webos.service.pdm/isWritableDrive "
+#define SAF_USB_SPACE_METHOD   "luna://com.webos.service.pdm/getSpaceInfo"
+#define SAF_USB_FORMAT_METHOD  "luna://com.webos.service.pdm/format"
+#define SAF_USB_EJECT_METHOD   "luna://com.webos.service.pdm/eject"
+
 USBStorageProvider::USBStorageProvider() : mQuit(false)
 {
 	mUsbDispatcherThread = std::thread(std::bind(&USBStorageProvider::dispatchHandler, this));
@@ -83,6 +89,7 @@ void USBStorageProvider::testMethod(std::shared_ptr<RequestData> data)
 	std::string uri = "luna://com.webos.service.pdm/getAttachedStorageDeviceList";
 	std::string payload = R"({"subscribe": true})";
 	LSError lserror;
+	(void)LSErrorInit(&lserror);
 	ReqContext *ctxPtr = new ReqContext();
 	ctxPtr->ctx = this;
 	ctxPtr->reqData = std::move(data);
@@ -109,6 +116,28 @@ void USBStorageProvider::testMethod(std::shared_ptr<RequestData> data)
 	//ToDo: Handle Error Scenarios
 }
 
+void USBStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> data)
+{
+	LOG_DEBUG_SAF("%s", __FUNCTION__);
+	std::string uri = "luna://com.webos.service.pdm/getAttachedStorageDeviceList";
+	std::string payload = R"({"subscribe": true})";
+	LSError lserror;
+	(void)LSErrorInit(&lserror);
+	ReqContext *ctxPtr = new ReqContext();
+	ctxPtr->ctx = this;
+	ctxPtr->reqData = std::move(data);
+
+	pbnjson::JValue nextReqArray = pbnjson::Array();
+	pbnjson::JValue nextObj = pbnjson::Object();
+
+	nextObj.put("uri", uri);
+	nextObj.put("payload", payload);
+	nextReqArray.append(nextObj);
+
+	LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),
+				USBStorageProvider::onReply, ctxPtr, NULL, &lserror);
+}
+
 void USBStorageProvider::addRequest(std::shared_ptr<RequestData>& reqData)
 {
 	mUSBReqQueue.push_back(std::move(reqData));
@@ -119,6 +148,7 @@ bool USBStorageProvider::onReply(LSHandle *sh, LSMessage *message , void *ctx)
 {
 	LOG_DEBUG_SAF("%s: [%s]", __FUNCTION__, LSMessageGetPayload(message));
 	LSError lserror;
+	(void)LSErrorInit(&lserror);
 	LSCallCancel(sh, NULL, &lserror);
 	ReqContext *ctxPtr = static_cast<ReqContext*>(ctx);
 	USBStorageProvider* self = static_cast<USBStorageProvider*>(ctxPtr->ctx);
@@ -164,6 +194,12 @@ void USBStorageProvider::handleRequests(std::shared_ptr<RequestData> reqData)
 		{
 			LOG_DEBUG_SAF("%s : MethodType::TEST_METHOD", __FUNCTION__);
 			auto fut = std::async(std::launch::async, [this, reqData]() { return this->testMethod(reqData); });
+			(void)fut;
+		}
+		case MethodType::LIST_STORAGES_METHOD:
+		{
+			LOG_DEBUG_SAF("%s : MethodType::LIST_STORAGES_METHOD", __FUNCTION__);
+			auto fut = std::async(std::launch::async, [this, reqData]() { return this->listStoragesMethod(reqData); });
 			(void)fut;
 		}
 		break;

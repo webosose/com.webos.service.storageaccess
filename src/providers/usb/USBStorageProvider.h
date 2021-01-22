@@ -27,7 +27,7 @@
 class USBStorageProvider: public DocumentProvider
 {
 public:
-	USBStorageProvider();
+    USBStorageProvider();
     virtual ~USBStorageProvider();
     ReturnValue attachCloud(AuthParam authParam);
     ReturnValue authenticateCloud(AuthParam authParam);
@@ -39,18 +39,19 @@ public:
     ReturnValue eject(string storageId);
     ReturnValue format(string storageId, string fileSystem, string volumeLabel);
 
-	void dispatchHandler();
-	void handleRequests(std::shared_ptr<RequestData>);
-	void addRequest(std::shared_ptr<RequestData>&);
-	void testMethod(std::shared_ptr<RequestData>);
-	static bool onReply(LSHandle*, LSMessage*, void*);
+    void dispatchHandler();
+    void handleRequests(std::shared_ptr<RequestData>);
+    void addRequest(std::shared_ptr<RequestData>&);
+    void testMethod(std::shared_ptr<RequestData>);
+    void listStoragesMethod(std::shared_ptr<RequestData>);
+    static bool onReply(LSHandle*, LSMessage*, void*);
 
 private:
-	std::vector<std::shared_ptr<RequestData>> mUSBReqQueue;
-	std::thread mUsbDispatcherThread;
-	std::mutex mMutex;
-	std::condition_variable mCondVar;
-	volatile bool mQuit;
+    std::vector<std::shared_ptr<RequestData>> mUSBReqQueue;
+    std::thread mUsbDispatcherThread;
+    std::mutex mMutex;
+    std::condition_variable mCondVar;
+    volatile bool mQuit;
 };
 
 #endif /* _INTERNAL_STORAGE_PROVIDER_H_ */

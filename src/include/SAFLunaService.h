@@ -52,10 +52,11 @@ public:
     bool format(LSMessage &message);
     StorageType getStorageDeviceType(pbnjson::JValue jsonObj);
 
-	bool testMethod(LSMessage &message);
-	void onTestMethodReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
-	void getSubsDropped(void);
-	static LSHandle* lsHandle;
+    bool testMethod(LSMessage &message);
+    void onTestMethodReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void onListOfStoragesReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void getSubsDropped(void);
+    static LSHandle* lsHandle;
 private :
     std::shared_ptr<DocumentProviderManager> mDocumentProviderManager;
     AuthParam mAuthParam;

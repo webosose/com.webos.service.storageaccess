@@ -53,7 +53,8 @@ typedef shared_ptr<ResultPair> ReturnValue;
 typedef map<string, string> AuthParam;
 
 enum class MethodType {
-	TEST_METHOD
+    TEST_METHOD,
+    LIST_STORAGES_METHOD
 };
 
 class RequestData {
