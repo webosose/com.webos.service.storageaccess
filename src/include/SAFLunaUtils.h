@@ -54,10 +54,13 @@
 #define PROPS_7(p1, p2, p3, p4, p5, p6, p7)           ",\"properties\":{" p1 "," p2 "," p3 "," p4 "," p5 "," p6 "," p7 "}"
 #define PROPS_8(p1, p2, p3, p4, p5, p6, p7, p8)       ",\"properties\":{" p1 "," p2 "," p3 "," p4 "," p5 "," p6 "," p7 "," p8 "}"
 #define PROPS_9(p1, p2, p3, p4, p5, p6, p7, p8, p9)   ",\"properties\":{" p1 "," p2 "," p3 "," p4 "," p5 "," p6 "," p7 "," p8 "," p9 "}"
+#define PROPS_10(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)   ",\"properties\":{" p1 "," p2 "," p3 "," p4 "," p5 "," p6 "," p7 "," p8 "," p9 "," p10"}"
 #define REQUIRED_1(p1)                                ",\"required\":[\"" #p1 "\"]"
 #define REQUIRED_2(p1, p2)                            ",\"required\":[\"" #p1 "\",\"" #p2 "\"]"
 #define REQUIRED_3(p1, p2, p3)                        ",\"required\":[\"" #p1 "\",\"" #p2 "\",\"" #p3 "\"]"
 #define REQUIRED_4(p1, p2, p3, p4)                    ",\"required\":[\"" #p1 "\",\"" #p2 "\",\"" #p3 "\",\"" #p4 "\"]"
+#define REQUIRED_5(p1, p2, p3, p4, p5)                ",\"required\":[\"" #p1 "\",\"" #p2 "\",\"" #p3 "\",\"" #p4 "\",\"" #p5 "\"]"
+#define REQUIRED_6(p1, p2, p3, p4, p5, p6)            ",\"required\":[\"" #p1 "\",\"" #p2 "\",\"" #p3 "\",\"" #p4 "\",\"" #p5 "\",\"" #p6"\"]"
 #define STRICT_SCHEMA(attributes)                     "{\"type\":\"object\"" attributes ",\"additionalProperties\":false}"
 #define RELAXED_SCHEMA(attributes)                    "{\"type\":\"object\"" attributes ",\"additionalProperties\":true}"
 

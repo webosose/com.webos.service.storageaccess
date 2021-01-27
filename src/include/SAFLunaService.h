@@ -42,19 +42,27 @@ public:
     virtual ~SAFLunaService();
     bool attachCloud(LSMessage &message);
     bool authenticateCloud(LSMessage &message);
-    bool listFolderContents(LSMessage &message);
+    bool list(LSMessage &message);
     bool getProperties(LSMessage &message);
-    bool listOfStorages(LSMessage &message);
+    bool listStorageProviders(LSMessage &message);
     bool copy(LSMessage &message);
     bool move(LSMessage &message);
     bool remove(LSMessage &message);
     bool eject(LSMessage &message);
     bool format(LSMessage &message);
+    bool rename(LSMessage &message);
     StorageType getStorageDeviceType(pbnjson::JValue jsonObj);
 
     bool testMethod(LSMessage &message);
     void onTestMethodReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void onListReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void onListOfStoragesReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void onCopyReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void onMoveReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void onRemoveReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void onEjectReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void onFormatReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    void onRenameReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void getSubsDropped(void);
     static LSHandle* lsHandle;
 private :

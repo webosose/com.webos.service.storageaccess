@@ -54,7 +54,15 @@ typedef map<string, string> AuthParam;
 
 enum class MethodType {
     TEST_METHOD,
-    LIST_STORAGES_METHOD
+    LIST_METHOD,
+    GET_PROP_METHOD,
+    LIST_STORAGES_METHOD,
+    COPY_METHOD,
+    MOVE_METHOD,
+    REMOVE_METHOD,
+    EJECT_METHOD,
+    FORMAT_METHOD,
+    RENAME_METHOD
 };
 
 class RequestData {
