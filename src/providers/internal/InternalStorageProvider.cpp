@@ -11,11 +11,13 @@
  * LICENSE@@@ */
 
 #include "InternalStorageProvider.h"
+#include "InternalOperationHandler.h"
 
 using namespace std;
 
 InternalStorageProvider::InternalStorageProvider()
 {
+	InternalOperationHandler::getInstance();
 }
 
 InternalStorageProvider::~InternalStorageProvider()

@@ -52,12 +52,12 @@ set(INC_FILES
     )
 include_directories(${INC_FILES})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 file(GLOB SAF_SOURCE
         ${CMAKE_SOURCE_DIR}/src/utils/*.cpp
         ${CMAKE_SOURCE_DIR}/src/luna/*.cpp
         ${CMAKE_SOURCE_DIR}/src/core/*.cpp
-	${CMAKE_SOURCE_DIR}/src/providers/gdrive/*.cpp
+        #${CMAKE_SOURCE_DIR}/src/providers/gdrive/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/usb/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/internal/*.cpp
         ${CMAKE_SOURCE_DIR}/src/main.cpp
@@ -72,11 +72,13 @@ set(LIBS
     ${PBNJSON_CPP_LDFLAGS}
     -lpthread
     -lcurl
+    -lstdc++fs
     -Wl,--no-as-needed
     )
 
 set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs)
-target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}  ${GDRIVE_LIBS}/libjconer.a ${GDRIVE_LIBS}/libgdrive.a)
+#target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}  ${GDRIVE_LIBS}/libjconer.a ${GDRIVE_LIBS}/libgdrive.a)
+target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS})
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
 
