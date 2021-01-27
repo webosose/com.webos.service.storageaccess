@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020 LG Electronics, Inc.
+ * Copyright (c) 2021 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -284,7 +284,7 @@ std::shared_ptr<InternalRemove> InternalOperationHandler::remove(std::string pat
     mRemoveObj = std::make_shared<InternalRemove>(path);
     return mRemoveObj;
 }
-    
+
 std::shared_ptr<InternalMove> InternalOperationHandler::move(std::string srcPath, std::string destPath)
 {
     mMoveObj = std::make_shared<InternalMove>(srcPath, destPath);

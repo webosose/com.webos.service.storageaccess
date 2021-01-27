@@ -57,7 +57,7 @@ file(GLOB SAF_SOURCE
         ${CMAKE_SOURCE_DIR}/src/utils/*.cpp
         ${CMAKE_SOURCE_DIR}/src/luna/*.cpp
         ${CMAKE_SOURCE_DIR}/src/core/*.cpp
-        #${CMAKE_SOURCE_DIR}/src/providers/gdrive/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/providers/gdrive/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/usb/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/internal/*.cpp
         ${CMAKE_SOURCE_DIR}/src/main.cpp
@@ -73,12 +73,11 @@ set(LIBS
     -lpthread
     -lcurl
     -lstdc++fs
-    -Wl,--no-as-needed
+    -Wl,--no-undefined
     )
 
 set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs)
-#target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}  ${GDRIVE_LIBS}/libjconer.a ${GDRIVE_LIBS}/libgdrive.a)
-target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS})
+target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}  ${GDRIVE_LIBS}/libjconer.a ${GDRIVE_LIBS}/libgdrive.a)
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
 

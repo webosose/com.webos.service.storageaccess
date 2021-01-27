@@ -29,14 +29,14 @@ class Allocator {
   public:
     Allocator() {
       arena_ =  arena_New();
-      if (arena_ == NULL) {
+      /*if (arena_ == NULL) {
         throw std::bad_alloc();
-      }
+      }*/
     }
     virtual ~Allocator() {
       arena_Free(arena_);
     }
-    
+
     void * malloc(size_t size) {
       return arena_Malloc(arena_, size);
     }
@@ -44,5 +44,5 @@ class Allocator {
     Arena* arena_;
 };
 
-void* allocate(size_t size) throw (std::bad_alloc);
+void* allocate(size_t size) /*throw (std::bad_alloc)*/;
 #endif
