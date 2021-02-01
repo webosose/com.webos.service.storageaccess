@@ -17,6 +17,7 @@ DocumentProviderFactory::Registrator<InternalStorageProviderFactory> factoryInte
 
 std::shared_ptr<DocumentProvider> InternalStorageProviderFactory::create(void) const
 {
-    return std::make_shared<InternalStorageProvider> ();
+    static std::shared_ptr<DocumentProvider> obj = std::make_shared<InternalStorageProvider> ();
+    return obj;
 }
 

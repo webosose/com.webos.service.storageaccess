@@ -42,13 +42,15 @@ class FolderContents
 private:
     std::string mFullPath;
     std::uint32_t mTotalCount;
-    std::vector<FolderContent> mContents;
+    std::vector<std::shared_ptr<FolderContent>> mContents;
+	int32_t mStatus;
     void init();
 public:
     FolderContents(std::string);
+	int32_t getStatus() { return mStatus; }
     std::string getPath() { return mFullPath; }
     std::uint32_t getTotalCount() { return mTotalCount; }
-    std::vector<FolderContent> getContents() { return mContents; }
+    std::vector<std::shared_ptr<FolderContent>> getContents() { return mContents; }
 };
 
 class InternalSpaceInfo
@@ -60,6 +62,7 @@ private:
     std::uint32_t mAvailSpace;
     bool mIsWritable;
     bool mIsDeletable;
+	int32_t mStatus;
     void init();
 public:
     InternalSpaceInfo(std::string);
@@ -68,6 +71,7 @@ public:
     std::uint32_t getAvailSpaceMB();
     bool getIsWritable();
     bool getIsDeletable();
+	int32_t getStatus();
 };
 
 class InternalCopy
@@ -78,9 +82,10 @@ private:
     uint32_t mSrcSize;
     uint32_t mDestSize;
     int32_t mStatus;
+	bool mOverwrite;
     void init();
 public:
-    InternalCopy(std::string, std::string);
+    InternalCopy(std::string, std::string, bool);
     std::uint32_t getStatus();
 };
 
@@ -101,30 +106,37 @@ private:
     std::string mSrcPath;
     std::string mDestPath;
     int32_t mStatus;
+	bool mOverwrite;
     void init();
 public:
-    InternalMove(std::string, std::string);
+    InternalMove(std::string, std::string, bool);
     int32_t getStatus();
 };
 
+class InternalRename
+{
+private:
+	std::string mOldAbsPath;
+	std::string mNewAbsPath;
+	int32_t mStatus;
+	void init();
+public:
+	InternalRename(std::string, std::string);
+	int32_t getStatus();
+};
 
 class InternalOperationHandler
 {
 private:
-    std::shared_ptr<FolderContents> mFolderContentObj;
-    std::shared_ptr<InternalSpaceInfo> mSpaceInfoObj;
-    std::shared_ptr<InternalCopy> mCopyObj;
-    std::shared_ptr<InternalRemove> mRemoveObj;
-    std::shared_ptr<InternalMove> mMoveObj;
-    void dumpContents();
     InternalOperationHandler();
 public:
     static InternalOperationHandler& getInstance();
-    std::shared_ptr<FolderContents> getListFolderContents(std::string);
-    std::shared_ptr<InternalSpaceInfo> getProperties(std::string path = std::string());
-    std::shared_ptr<InternalCopy> copy(std::string, std::string);
-    std::shared_ptr<InternalRemove> remove(std::string);
-    std::shared_ptr<InternalMove> move(std::string, std::string);
+    std::unique_ptr<FolderContents> getListFolderContents(std::string);
+    std::unique_ptr<InternalSpaceInfo> getProperties(std::string path = std::string());
+    std::unique_ptr<InternalCopy> copy(std::string, std::string, bool);
+    std::unique_ptr<InternalRemove> remove(std::string);
+    std::unique_ptr<InternalMove> move(std::string, std::string, bool);
+	std::unique_ptr<InternalRename> rename(std::string, std::string);
 };
 
 

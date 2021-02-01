@@ -81,37 +81,42 @@ void SAFLunaService::registerService()
 void SAFLunaService::getSubsDropped(void)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
-	return;
+    return;
 }
 
 bool SAFLunaService::testMethod(LSMessage &message)
 {
-	LS::Message request(&message);
-	LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    LS::Message request(&message);
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
 
-	pbnjson::JValue requestObj;
-	std::string value;
-	int parseError = 0;
-	int storageType = 0;
-	const std::string schema = STRICT_SCHEMA(PROPS_2(PROP(storageType, integer), PROP(value, string))REQUIRED_2(storageType, value));
-	if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
-	{
-		LOG_DEBUG_SAF("%s: Invalid Json Format Error", __FUNCTION__);
-		const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
-		LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
-		return true;
-	}
-	std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
-	REQUEST_BUILDER(reqData, MethodType::TEST_METHOD, requestObj, SAFLunaService::onTestMethodReply)
-	mDocumentProviderManager->addRequest(reqData);
-	return true;
+    pbnjson::JValue requestObj;
+    std::string value;
+    int parseError = 0;
+    const std::string schema = STRICT_SCHEMA(PROPS_2(PROP(storageType, string), PROP(value, string))REQUIRED_2(storageType, value));
+    if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
+    {
+        LOG_DEBUG_SAF("%s: Invalid Json Format Error", __FUNCTION__);
+        const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
+        LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
+        return true;
+    }
+    std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
+    REQUEST_BUILDER(reqData, MethodType::TEST_METHOD, requestObj, SAFLunaService::onTestMethodReply)
+    mDocumentProviderManager->addRequest(reqData);
+    return true;
 }
 
 void SAFLunaService::onTestMethodReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs)
 {
-	LOG_TRACE("Entering function %s", __FUNCTION__);
-	// Fill Reply Object from Root Object and send
-	LSUtils::postToClient(subs->getMessage(), rootObj);
+    LOG_TRACE("Entering function %s", __FUNCTION__);
+    // Fill Reply Object from Root Object and send
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue requestObj;
+    if (LSUtils::parsePayload(request.getPayload(), requestObj, std::string(SCHEMA_ANY), NULL))
+    {
+        LOG_DEBUG_SAF("%s: %d", __FUNCTION__, getStorageDeviceType(requestObj["storageType"].asString()));
+    }
+    LSUtils::postToClient(subs->getMessage(), rootObj);
 }
 
 bool SAFLunaService::attachCloud(LSMessage &message)
@@ -124,7 +129,6 @@ bool SAFLunaService::attachCloud(LSMessage &message)
     std::string clientID;
     std::string clientSecret;
     int parseError = 0;
-    int storageType = 0;
 
     ReturnValue retValue;
 
@@ -307,11 +311,11 @@ bool SAFLunaService::list(LSMessage &message)
      }
 
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
-    REQUEST_BUILDER(reqData, MethodType::LIST_METHOD, requestObj, SAFLunaService::onListOfStoragesReply)
+    REQUEST_BUILDER(reqData, MethodType::LIST_METHOD, requestObj, SAFLunaService::onListReply)
     mDocumentProviderManager->addRequest(reqData);
 
     pbnjson::JValue responseObj = pbnjson::Object();
-    responseObj.put("returnValue", true);
+    responseObj.put("status", "In Progress");
     LSUtils::generatePayload(responseObj, payload);
     request.respond(payload.c_str());
     return true;
@@ -321,13 +325,27 @@ void SAFLunaService::onListReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtil
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
     // Fill Reply Object from Root Object and send
-    LSUtils::postToClient(subs->getMessage(), rootObj);
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue reqObj;
+    pbnjson::JValue respObj;
+    if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
+    {
+        StorageType type = getStorageDeviceType(reqObj);
+        if (type == StorageType::INTERNAL)
+        {
+            respObj = rootObj;
+        }
+        else
+        {
+            respObj.put("returnValue", false);
+        }
+    }
+    LSUtils::postToClient(subs->getMessage(), respObj);
 }
-
 
 bool SAFLunaService::getProperties(LSMessage &message)
 {
-    LOG_TRACE("Entering function %s", __FUNCTION__);
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
 
     LS::Message request(&message);
     pbnjson::JValue requestObj;
@@ -352,25 +370,37 @@ bool SAFLunaService::getProperties(LSMessage &message)
          return true;
      }
 
-#if 0
-    StorageType storageType = getStorageDeviceType(requestObj);
-    mDocumentProviderManager->getProperties(mAuthParam,storageType);
-#endif
+    std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
+    REQUEST_BUILDER(reqData, MethodType::GET_PROP_METHOD, requestObj, SAFLunaService::onGetPropertiesReply)
+    mDocumentProviderManager->addRequest(reqData);
 
     pbnjson::JValue responseObj = pbnjson::Object();
-    responseObj.put("returnValue", true);
-
+    responseObj.put("status", "In Progress");
     LSUtils::generatePayload(responseObj, payload);
     request.respond(payload.c_str());
     return true;
 }
 
-void SAFLunaService::onListOfStoragesReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs)
+void SAFLunaService::onGetPropertiesReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs)
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
-    USBPbnJsonParser parser;
-    pbnjson::JValue responseObj = parser.ParseListOfStorages(rootObj);
-    LSUtils::postToClient(subs->getMessage(), responseObj);
+    // Fill Reply Object from Root Object and send
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue reqObj;
+    pbnjson::JValue respObj;
+    if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
+    {
+        StorageType type = getStorageDeviceType(reqObj);
+        if (type == StorageType::INTERNAL)
+        {
+            respObj = rootObj;
+        }
+        else
+        {
+            respObj.put("returnValue", false);
+        }
+    }
+    LSUtils::postToClient(subs->getMessage(), respObj);
 }
 
 bool SAFLunaService::listStorageProviders(LSMessage &message)
@@ -397,6 +427,14 @@ bool SAFLunaService::listStorageProviders(LSMessage &message)
     return true;
 }
 
+void SAFLunaService::onListOfStoragesReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs)
+{
+    LOG_TRACE("Entering function %s", __FUNCTION__);
+    USBPbnJsonParser parser;
+    pbnjson::JValue responseObj = parser.ParseListOfStorages(rootObj);
+    LSUtils::postToClient(subs->getMessage(), responseObj);
+}
+
 bool SAFLunaService::copy(LSMessage &message)
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
@@ -408,7 +446,6 @@ bool SAFLunaService::copy(LSMessage &message)
 
     const std::string schema = STRICT_SCHEMA(PROPS_10(PROP(srcStorageType, string), PROP(srcStorageId, string), PROP(destStorageType, string), PROP(destStorageId, string), PROP(srcPath, string), PROP(destPath, string), PROP(srcRefreshToken, string), PROP(destRefreshToken, string), PROP(overwrite, boolean), PROP(subscribe, boolean))
                                REQUIRED_6(srcStorageType, srcStorageId, destStorageType, destStorageId, srcPath, destPath));
-
 
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
@@ -432,14 +469,12 @@ bool SAFLunaService::copy(LSMessage &message)
 
     requestObj.put("storageType",srcType);
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
-    REQUEST_BUILDER(reqData, MethodType::COPY_METHOD, requestObj, SAFLunaService::onEjectReply)
+    REQUEST_BUILDER(reqData, MethodType::COPY_METHOD, requestObj, SAFLunaService::onCopyReply)
     mDocumentProviderManager->addRequest(reqData);
 
-    LOG_DEBUG_SAF("copy : Src Folder Path:%s And Dst Folder Path=%s", srcPath.c_str(), destPath);
-
+    LOG_DEBUG_SAF("copy : Src Folder Path:%s And Dst Folder Path=%s", srcPath.c_str(), destPath.c_str());
     pbnjson::JValue responseObj = pbnjson::Object();
-    responseObj.put("returnValue", true);
-
+    responseObj.put("status", "In Progress");
     LSUtils::generatePayload(responseObj, payload);
     request.respond(payload.c_str());
     return true;
@@ -449,7 +484,22 @@ void SAFLunaService::onCopyReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtil
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
     // Fill Reply Object from Root Object and send
-    LSUtils::postToClient(subs->getMessage(), rootObj);
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue reqObj;
+    pbnjson::JValue respObj;
+    if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
+    {
+        StorageType type = getStorageDeviceType(reqObj);
+        if (type == StorageType::INTERNAL)
+        {
+            respObj = rootObj;
+        }
+        else
+        {
+            respObj.put("returnValue", false);
+        }
+    }
+    LSUtils::postToClient(subs->getMessage(), respObj);
 }
 
 bool SAFLunaService::move(LSMessage &message)
@@ -487,15 +537,14 @@ bool SAFLunaService::move(LSMessage &message)
 
     requestObj.put("storageType",srcType);
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
-    REQUEST_BUILDER(reqData, MethodType::MOVE_METHOD, requestObj, SAFLunaService::onEjectReply)
+    REQUEST_BUILDER(reqData, MethodType::MOVE_METHOD, requestObj, SAFLunaService::onMoveReply)
     mDocumentProviderManager->addRequest(reqData);
 
+    LOG_DEBUG_SAF("Move : Src Folder Path:%s And Dst Folder Path=%s", srcPath.c_str(), destPath.c_str());
     pbnjson::JValue responseObj = pbnjson::Object();
-    responseObj.put("returnValue", true);
-
+    responseObj.put("status", "In Progress");
     LSUtils::generatePayload(responseObj, payload);
     request.respond(payload.c_str());
-
     return true;
 }
 
@@ -503,7 +552,22 @@ void SAFLunaService::onMoveReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtil
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
     // Fill Reply Object from Root Object and send
-    LSUtils::postToClient(subs->getMessage(), rootObj);
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue reqObj;
+    pbnjson::JValue respObj;
+    if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
+    {
+        StorageType type = getStorageDeviceType(reqObj);
+        if (type == StorageType::INTERNAL)
+        {
+            respObj = rootObj;
+        }
+        else
+        {
+            respObj.put("returnValue", false);
+        }
+    }
+    LSUtils::postToClient(subs->getMessage(), respObj);
 }
 
 bool SAFLunaService::remove(LSMessage &message)
@@ -532,16 +596,12 @@ bool SAFLunaService::remove(LSMessage &message)
     LOG_DEBUG_SAF("========> storageType:%s",storageTypeString.c_str());
     LOG_DEBUG_SAF("========> folderPath:%s",folderpathString.c_str());
 
-#if 0
-    StorageType storageType = getStorageDeviceType(requestObj);
-    mDocumentProviderManager->remove(mAuthParam,storageType,storageIdString,folderpathString);
-#endif
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
-    REQUEST_BUILDER(reqData, MethodType::REMOVE_METHOD, requestObj, SAFLunaService::onEjectReply)
+    REQUEST_BUILDER(reqData, MethodType::REMOVE_METHOD, requestObj, SAFLunaService::onRemoveReply)
     mDocumentProviderManager->addRequest(reqData);
 
     pbnjson::JValue responseObj = pbnjson::Object();
-    responseObj.put("returnValue", true);
+    responseObj.put("status", "In Progress");
     LSUtils::generatePayload(responseObj, payload);
     request.respond(payload.c_str());
     return true;
@@ -551,7 +611,22 @@ void SAFLunaService::onRemoveReply(pbnjson::JValue rootObj, std::shared_ptr<LSUt
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
     // Fill Reply Object from Root Object and send
-    LSUtils::postToClient(subs->getMessage(), rootObj);
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue reqObj;
+    pbnjson::JValue respObj;
+    if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
+    {
+        StorageType type = getStorageDeviceType(reqObj);
+        if (type == StorageType::INTERNAL)
+        {
+            respObj = rootObj;
+        }
+        else
+        {
+            respObj.put("returnValue", false);
+        }
+    }
+    LSUtils::postToClient(subs->getMessage(), respObj);
 }
 
 bool SAFLunaService::eject(LSMessage &message)
@@ -596,7 +671,22 @@ void SAFLunaService::onEjectReply(pbnjson::JValue rootObj, std::shared_ptr<LSUti
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
     // Fill Reply Object from Root Object and send
-    LSUtils::postToClient(subs->getMessage(), rootObj);
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue reqObj;
+    pbnjson::JValue respObj;
+    if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
+    {
+        StorageType type = getStorageDeviceType(reqObj);
+        if (type == StorageType::INTERNAL)
+        {
+            respObj = rootObj;
+        }
+        else
+        {
+            respObj.put("returnValue", false);
+        }
+    }
+    LSUtils::postToClient(subs->getMessage(), respObj);
 }
 
 bool SAFLunaService::format(LSMessage &message)
@@ -640,7 +730,22 @@ void SAFLunaService::onFormatReply(pbnjson::JValue rootObj, std::shared_ptr<LSUt
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
     // Fill Reply Object from Root Object and send
-    LSUtils::postToClient(subs->getMessage(), rootObj);
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue reqObj;
+    pbnjson::JValue respObj;
+    if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
+    {
+        StorageType type = getStorageDeviceType(reqObj);
+        if (type == StorageType::INTERNAL)
+        {
+            respObj = rootObj;
+        }
+        else
+        {
+            respObj.put("returnValue", false);
+        }
+    }
+    LSUtils::postToClient(subs->getMessage(), respObj);
 }
 
 bool SAFLunaService::rename(LSMessage &message)
@@ -672,7 +777,7 @@ bool SAFLunaService::rename(LSMessage &message)
     }
 
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
-    REQUEST_BUILDER(reqData, MethodType::RENAME_METHOD, requestObj, SAFLunaService::onFormatReply)
+    REQUEST_BUILDER(reqData, MethodType::RENAME_METHOD, requestObj, SAFLunaService::onRenameReply)
     mDocumentProviderManager->addRequest(reqData);
 
     pbnjson::JValue responseObj = pbnjson::Object();
@@ -686,7 +791,22 @@ void SAFLunaService::onRenameReply(pbnjson::JValue rootObj, std::shared_ptr<LSUt
 {
     LOG_TRACE("Entering function %s", __FUNCTION__);
     // Fill Reply Object from Root Object and send
-    LSUtils::postToClient(subs->getMessage(), rootObj);
+    LS::Message request(subs->getMessage());
+    pbnjson::JValue reqObj;
+    pbnjson::JValue respObj;
+    if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
+    {
+        StorageType type = getStorageDeviceType(reqObj);
+        if (type == StorageType::INTERNAL)
+        {
+            respObj = rootObj;
+        }
+        else
+        {
+            respObj.put("returnValue", false);
+        }
+    }
+    LSUtils::postToClient(subs->getMessage(), respObj);
 }
 
 #if 0
@@ -717,17 +837,22 @@ StorageType SAFLunaService::getStorageDeviceType(pbnjson::JValue jsonObj)
 StorageType SAFLunaService::getStorageDeviceType(pbnjson::JValue jsonObj)
 {
     StorageType storageType = StorageType::INVALID;
+    std::string type;
+    if (!jsonObj.isNull() && jsonObj.hasKey("storageType")
+        && jsonObj["storageType"].isString())
+        type = jsonObj["storageType"].asString();
+    else if (!jsonObj.isNull() && jsonObj.hasKey("srcStorageType")
+        && jsonObj["srcStorageType"].isString())
+        type = jsonObj["srcStorageType"].asString();
 
-    if (!jsonObj.isNull() && jsonObj["storageType"].isString()) {
-        if(jsonObj["storageType"] == "INTERNAL")
-            storageType = StorageType::INTERNAL;
-        else if(jsonObj["storageType"] == "USB")
-            storageType = StorageType::USB;
-        else if(jsonObj["storageType"] == "CLOUD")
-            storageType = StorageType::GDRIVE;
+    if(type == "INTERNAL")
+        storageType = StorageType::INTERNAL;
+    else if(type == "USB")
+        storageType = StorageType::USB;
+    else if(type == "CLOUD")
+        storageType = StorageType::GDRIVE;
 
-        LOG_DEBUG_SAF("getStorageDeviceType : Invalid storageType");
-    }
+    LOG_DEBUG_SAF("getStorageDeviceType : Invalid storageType");
     return storageType;
 }
 

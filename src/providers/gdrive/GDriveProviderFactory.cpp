@@ -19,7 +19,7 @@ DocumentProviderFactory::Registrator<GDriveProviderFactory> factoryGDriveStorage
 
 std::shared_ptr<DocumentProvider> GDriveProviderFactory::create(void) const
 {
-    LOG_DEBUG_SAF("GDriveProviderFactory::create : Function called");
-    return std::make_shared<GDriveProvider> ();
+    static std::shared_ptr<DocumentProvider> obj = std::make_shared<GDriveProvider> ();
+    return obj;
 }
 

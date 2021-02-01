@@ -47,8 +47,8 @@ public:
     static bool onReply(LSHandle*, LSMessage*, void*);
 
 private:
-    std::vector<std::shared_ptr<RequestData>> mUSBReqQueue;
-    std::thread mUsbDispatcherThread;
+    std::vector<std::shared_ptr<RequestData>> mQueue;
+    std::thread mDispatcherThread;
     std::mutex mMutex;
     std::condition_variable mCondVar;
     volatile bool mQuit;

@@ -57,6 +57,8 @@ public:
     void onTestMethodReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void onListReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void onListOfStoragesReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+	
+	void onGetPropertiesReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void onCopyReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void onMoveReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void onRemoveReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);

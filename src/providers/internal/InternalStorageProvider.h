@@ -16,6 +16,15 @@
 #include "DocumentProvider.h"
 #include "DocumentProviderFactory.h"
 #include <iostream>
+#include <vector>
+#include <map>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <luna-service2/lunaservice.hpp>
+#include <pbnjson.hpp>
+
+#define DEFAULT_INTERNAL_PATH "/tmp/internal"
 
 class InternalStorageProvider: public DocumentProvider
 {
@@ -24,7 +33,7 @@ public:
     virtual ~InternalStorageProvider();
     ReturnValue attachCloud(AuthParam authParam);
     ReturnValue authenticateCloud(AuthParam authParam);
-    ReturnValue listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit);
+	ReturnValue listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit);
     ReturnValue getProperties(AuthParam authParam);
     ReturnValue copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
     ReturnValue move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
@@ -32,9 +41,28 @@ public:
     ReturnValue eject(string storageId);
     ReturnValue format(string storageId, string fileSystem, string volumeLabel);
 
-	void addRequest(std::shared_ptr<RequestData>&) {}
+	void dispatchHandler();
+    void handleRequests(std::shared_ptr<RequestData>);
+    void addRequest(std::shared_ptr<RequestData>&);
+	void listStoragesMethod(std::shared_ptr<RequestData> reqData);
+    void listFolderContents(std::shared_ptr<RequestData> reqData);
+	void getProperties(std::shared_ptr<RequestData> reqData);
+    void copy(std::shared_ptr<RequestData> reqData);
+    void move(std::shared_ptr<RequestData> reqData);
+    void remove(std::shared_ptr<RequestData> reqData);
+	void rename(std::shared_ptr<RequestData> reqData);
+    void eject(std::shared_ptr<RequestData> reqData);
+    void format(std::shared_ptr<RequestData> reqData);
+    void testMethod(std::shared_ptr<RequestData>);
+    static bool onReply(LSHandle*, LSMessage*, void*);
 
 private:
+    std::vector<std::shared_ptr<RequestData>> mQueue;
+    std::thread mDispatcherThread;
+    std::mutex mMutex;
+    std::condition_variable mCondVar;
+    volatile bool mQuit;
+
 };
 
 #endif /* _INTERNAL_STORAGE_PROVIDER_H_ */
