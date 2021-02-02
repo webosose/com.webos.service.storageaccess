@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020 LG Electronics, Inc.
+ * Copyright (c) 2021 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -44,7 +44,16 @@ public:
     void addRequest(std::shared_ptr<RequestData>&);
     void testMethod(std::shared_ptr<RequestData>);
     void listStoragesMethod(std::shared_ptr<RequestData>);
+    void getPropertiesMethod(std::shared_ptr<RequestData>);
+    void ejectMethod(std::shared_ptr<RequestData>);
+    void formatMethod(std::shared_ptr<RequestData>);
+    void copyMethod(std::shared_ptr<RequestData>);
+    void moveMethod(std::shared_ptr<RequestData>);
+    void removeMethod(std::shared_ptr<RequestData>);
+    void renameMethod(std::shared_ptr<RequestData>);
+    void listFolderContentsMethod(std::shared_ptr<RequestData>);
     static bool onReply(LSHandle*, LSMessage*, void*);
+    static bool onGetPropertiesReply(LSHandle*, LSMessage*, void*);
 
 private:
     std::vector<std::shared_ptr<RequestData>> mQueue;
@@ -52,6 +61,8 @@ private:
     std::mutex mMutex;
     std::condition_variable mCondVar;
     volatile bool mQuit;
+    static string storageId;
+    static string driveName;
 };
 
-#endif /* _INTERNAL_STORAGE_PROVIDER_H_ */
+#endif /* _USB_STORAGE_PROVIDER_H_ */
