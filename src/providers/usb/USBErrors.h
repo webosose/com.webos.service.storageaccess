@@ -34,7 +34,7 @@ namespace USBErrors
         USB_MOVE_FAILED,
         USB_REMOVE_FAILED,
         USB_LIST_CONTENTS_FAILED,
-        USB_RENAME_FAILED
+        USB_RENAME_FAILED,
         USB_ERROR_NOT_SUPPORTED = 9282
     };
 
