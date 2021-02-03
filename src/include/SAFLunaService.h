@@ -40,42 +40,31 @@ class SAFLunaService: public LS::Handle, public StatusObserver
 public:
     SAFLunaService();
     virtual ~SAFLunaService();
-    bool attachCloud(LSMessage &message);
-    bool authenticateCloud(LSMessage &message);
+    bool handleExtraCommand(LSMessage &message);
+	void onHandleExtraCommandReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs);
     bool list(LSMessage &message);
-    bool getProperties(LSMessage &message);
-    bool listStorageProviders(LSMessage &message);
-    bool copy(LSMessage &message);
-    bool move(LSMessage &message);
-    bool remove(LSMessage &message);
-    bool eject(LSMessage &message);
-    bool format(LSMessage &message);
-    bool rename(LSMessage &message);
-    StorageType getStorageDeviceType(pbnjson::JValue jsonObj);
-
-    bool testMethod(LSMessage &message);
-    void onTestMethodReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void onListReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    bool getProperties(LSMessage &message);
+    void onGetPropertiesReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    bool listStorageProviders(LSMessage &message);
     void onListOfStoragesReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
-	
-	void onGetPropertiesReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    bool copy(LSMessage &message);
     void onCopyReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    bool move(LSMessage &message);
     void onMoveReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    bool remove(LSMessage &message);
     void onRemoveReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    bool eject(LSMessage &message);
     void onEjectReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
-    void onFormatReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
+    bool rename(LSMessage &message);
     void onRenameReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     void getSubsDropped(void);
     static LSHandle* lsHandle;
 private :
     std::shared_ptr<DocumentProviderManager> mDocumentProviderManager;
     AuthParam mAuthParam;
-
     void registerService();
-//  static void responseCallback(Parameters* paramList, LS::Message& message);
-//  bool addSubscription(LSHandle *sh, LSMessage *message, std::string key);
-//  void setLSHandle(LSHandle* handle);
-
+	StorageType getStorageDeviceType(pbnjson::JValue jsonObj);
 };
 #endif /* SRC_LUNA_SAFLUNASERVICE_H_ */
 

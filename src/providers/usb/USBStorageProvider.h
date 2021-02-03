@@ -29,21 +29,11 @@ class USBStorageProvider: public DocumentProvider
 public:
     USBStorageProvider();
     virtual ~USBStorageProvider();
-    ReturnValue attachCloud(AuthParam authParam);
-    ReturnValue authenticateCloud(AuthParam authParam);
-    ReturnValue listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit);
-    ReturnValue getProperties(AuthParam authParam);
-    ReturnValue copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue remove(AuthParam authParam, string storageId, string path);
-    ReturnValue eject(string storageId);
-    ReturnValue format(string storageId, string fileSystem, string volumeLabel);
-
+	void addRequest(std::shared_ptr<RequestData>&);
     void dispatchHandler();
     void handleRequests(std::shared_ptr<RequestData>);
-    void addRequest(std::shared_ptr<RequestData>&);
-    void testMethod(std::shared_ptr<RequestData>);
     void listStoragesMethod(std::shared_ptr<RequestData>);
+    static bool onListStoragesMethodReply(LSHandle*, LSMessage*, void*);
     void getPropertiesMethod(std::shared_ptr<RequestData>);
     void ejectMethod(std::shared_ptr<RequestData>);
     void formatMethod(std::shared_ptr<RequestData>);

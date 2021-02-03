@@ -17,6 +17,19 @@
 #include <string>
 #include <memory>
 #include <stdint.h>
+#include "SAFErrors.h"
+
+enum InternalOperErrors
+{
+	NO_ERROR = 0,
+	UNKNOWN = -1,
+	INVALID_PATH = -2,
+	INVALID_SOURCE_PATH = -3,
+	INVALID_DEST_PATH = -4,
+	FILE_ALREADY_EXISTS = -5,
+	SUCCESS = 100
+};
+int getInternalErrorCode(int errorCode);
 
 class FolderContent
 {
@@ -105,6 +118,8 @@ class InternalMove
 private:
     std::string mSrcPath;
     std::string mDestPath;
+    uint32_t mSrcSize;
+    uint32_t mDestSize;
     int32_t mStatus;
 	bool mOverwrite;
     void init();
@@ -122,6 +137,18 @@ private:
 	void init();
 public:
 	InternalRename(std::string, std::string);
+	int32_t getStatus();
+};
+
+class InternalCreateDir
+{
+private:
+	std::string mPath;
+	int32_t mStatus;
+
+	void init();
+public:
+	InternalCreateDir(std::string);
 	int32_t getStatus();
 };
 

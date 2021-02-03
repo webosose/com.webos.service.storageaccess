@@ -21,6 +21,23 @@
 
 namespace fs = std::filesystem;
 
+int getInternalErrorCode(int errorCode)
+{
+    static std::map<int, int> convMap = {
+        {InternalOperErrors::NO_ERROR, SAFErrors::InternalErrors::InternalErrorEnum::NO_ERROR},
+        {InternalOperErrors::UNKNOWN, SAFErrors::InternalErrors::InternalErrorEnum::UNKNOWN_ERROR},
+        {InternalOperErrors::INVALID_PATH, SAFErrors::InternalErrors::InternalErrorEnum::INVALID_PATH},
+        {InternalOperErrors::INVALID_SOURCE_PATH, SAFErrors::InternalErrors::InternalErrorEnum::INVALID_SOURCE_PATH},
+        {InternalOperErrors::INVALID_DEST_PATH, SAFErrors::InternalErrors::InternalErrorEnum::INVALID_DEST_PATH},
+        {InternalOperErrors::FILE_ALREADY_EXISTS, SAFErrors::InternalErrors::InternalErrorEnum::FILE_ALREADY_EXISTS},
+        {InternalOperErrors::SUCCESS, SAFErrors::InternalErrors::InternalErrorEnum::NO_ERROR},
+    };
+    int retCode = SAFErrors::InternalErrors::InternalErrorEnum::UNKNOWN_ERROR;
+    if (convMap.find(errorCode) != convMap.end())
+        retCode = convMap[errorCode];
+    return retCode;
+}
+
 FolderContent::FolderContent(std::string absPath) : mPath(absPath)
 {
     init();
@@ -78,7 +95,7 @@ uint32_t FolderContent::getFileSize(std::string filePath)
     return size;
 }
 
-FolderContents::FolderContents(std::string fullPath) : mFullPath(fullPath), mStatus(0)
+FolderContents::FolderContents(std::string fullPath) : mFullPath(fullPath), mStatus(NO_ERROR)
 {
     init();
 }
@@ -100,12 +117,12 @@ void FolderContents::init()
     }
     catch(fs::filesystem_error& e) {
         mTotalCount = 0;
-        mStatus = -1;
+        mStatus = INVALID_PATH;
     }
     mTotalCount = mContents.size();
 }
 
-InternalSpaceInfo::InternalSpaceInfo(std::string path) : mPath(path), mStatus(0)
+InternalSpaceInfo::InternalSpaceInfo(std::string path) : mPath(path), mStatus(NO_ERROR)
 {
     init();
 }
@@ -121,10 +138,10 @@ void InternalSpaceInfo::init()
         fs::perms ps = fs::status(mPath).permissions();
         mIsWritable = ((ps & fs::perms::owner_write) != fs::perms::none);
         mIsDeletable = ((ps & fs::perms::group_write) != fs::perms::none);
-        mStatus = 100;
+        mStatus = SUCCESS;
     }
     catch(fs::filesystem_error& e) {
-        mStatus = -1;
+        mStatus = INVALID_PATH;
     }
 }
 
@@ -160,13 +177,35 @@ int32_t InternalSpaceInfo::getStatus()
 
 
 InternalCopy::InternalCopy(std::string src, std::string dest, bool overwrite)
-    : mSrcPath(src), mDestPath(dest), mStatus(0), mOverwrite(overwrite)
+    : mSrcPath(src), mDestPath(dest), mStatus(NO_ERROR), mOverwrite(overwrite)
 {
     init();
 }
 
 void InternalCopy::init()
 {
+    if (!fs::exists(mSrcPath))
+    {
+        mStatus = INVALID_SOURCE_PATH;
+        return;
+    }
+    if (!fs::exists(mDestPath))
+    {
+        mStatus = INVALID_DEST_PATH;
+        return;
+    }
+    std::string desPath = mDestPath + mSrcPath.substr(mSrcPath.rfind("/"));
+    if (fs::exists(desPath) & !mOverwrite)
+    {
+        mStatus = FILE_ALREADY_EXISTS;
+        return;
+    }
+    if (fs::is_directory(mSrcPath))
+    {
+        if (!fs::exists(desPath))
+            fs::create_directories(desPath);
+        mDestPath = desPath;
+    }
     mSrcSize = FolderContent(mSrcPath).getSize();
     mDestSize = FolderContent(mDestPath).getSize();
     std::async(std::launch::async, [this]()
@@ -179,10 +218,10 @@ void InternalCopy::init()
                 else
                     copyOptions |= fs::copy_options::skip_existing;
                 fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
-                this->mStatus = 100;
+                this->mStatus = SUCCESS;
             }
             catch(fs::filesystem_error& e) {
-                this->mStatus = -1;
+                this->mStatus = INVALID_DEST_PATH;
             }
         });
 }
@@ -190,18 +229,16 @@ void InternalCopy::init()
 std::uint32_t InternalCopy::getStatus()
 {
     uint32_t size = FolderContent(mDestPath).getSize();
-    uint32_t change = (mSrcSize - size);
-    if ((mStatus != -1) && (change > 0))
+    uint32_t change = (mSrcSize - size + mDestSize);
+    if ((mStatus >= NO_ERROR) && (change > 0))
         mStatus = int(change / mSrcSize * 100);
-    else if ((mStatus != -1) && (change == 0))
-        mStatus = 100;
-    else
-        mStatus = -1;
+    else if ((mStatus >= NO_ERROR) && (change == 0))
+        mStatus = SUCCESS;
     return mStatus;
 }
 
 InternalRemove::InternalRemove(std::string path)
-    : mPath(path), mStatus(0)
+    : mPath(path), mStatus(NO_ERROR)
 {
     init();
 }
@@ -212,13 +249,13 @@ void InternalRemove::init()
         if (fs::exists(mPath))
         {
             fs::remove_all(mPath);
-            mStatus = 100;
+            mStatus = SUCCESS;
         }
         else
-            mStatus = -1;
+            mStatus = INVALID_PATH;
     }
     catch(fs::filesystem_error& e) {
-        mStatus = -1;
+        mStatus = INVALID_PATH;
     }
 }
 
@@ -228,43 +265,92 @@ int32_t InternalRemove::getStatus()
 }
 
 InternalMove::InternalMove(std::string srcPath, std::string destPath, bool overwrite)
-    : mSrcPath(srcPath), mDestPath(destPath), mStatus(0), mOverwrite(overwrite)
+    : mSrcPath(srcPath), mDestPath(destPath), mStatus(NO_ERROR), mOverwrite(overwrite)
 {
     init();
 }
 
 void InternalMove::init()
 {
-    InternalRename obj = InternalRename(mSrcPath, mDestPath);
-    mStatus = obj.getStatus();
-    if ((mStatus == -1) && mOverwrite)
-    {
-        InternalRemove remObj = InternalRemove(mDestPath);
-        mStatus = remObj.getStatus();
-        InternalRename retryObj = InternalRename(mSrcPath, mDestPath);
-        mStatus = retryObj.getStatus();
+    try {
+        if (!fs::exists(mSrcPath))
+        {
+            mStatus = INVALID_SOURCE_PATH;
+            return;
+        }
+        if (!fs::exists(mDestPath))
+        {
+            mStatus = INVALID_DEST_PATH;
+            return;
+        }
+        std::string desPath = mDestPath + mSrcPath.substr(mSrcPath.rfind("/"));
+        if (fs::exists(desPath) & !mOverwrite)
+        {
+            mStatus = FILE_ALREADY_EXISTS;
+            return;
+        }
+        if (fs::is_directory(mSrcPath))
+        {
+            if (!fs::exists(desPath))
+                fs::create_directories(desPath);
+            mDestPath = desPath;
+        }
+        mSrcSize = FolderContent(mSrcPath).getSize();
+        mDestSize = FolderContent(mDestPath).getSize();
+        std::async(std::launch::async, [this]()
+            {
+                try {
+                    auto copyOptions = fs::copy_options::recursive
+                               | fs::copy_options::skip_symlinks;
+                    if (this->mOverwrite)
+                        copyOptions |= fs::copy_options::overwrite_existing;
+                    else
+                        copyOptions |= fs::copy_options::skip_existing;
+                    fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
+                    this->mStatus = SUCCESS;
+                }
+                catch(fs::filesystem_error& e) {
+                    this->mStatus = INVALID_DEST_PATH;
+                }
+            });
+        fs::remove_all(mSrcPath);
+    }
+    catch(fs::filesystem_error& e) {
+        mStatus = UNKNOWN;
     }
 }
 
 int32_t InternalMove::getStatus()
 {
+    uint32_t size = FolderContent(mDestPath).getSize();
+    uint32_t change = (mSrcSize - size + mDestSize);
+    if ((mStatus >= NO_ERROR) && (change > 0))
+        mStatus = int(change / mSrcSize * 100);
+    else if ((mStatus >= NO_ERROR) && (change == 0))
+        mStatus = SUCCESS;
     return mStatus;
 }
 
 InternalRename::InternalRename(std::string oldAbsPath, std::string newAbsPath)
-    : mOldAbsPath(oldAbsPath), mNewAbsPath(newAbsPath), mStatus(0)
+    : mOldAbsPath(oldAbsPath), mNewAbsPath(newAbsPath), mStatus(NO_ERROR)
 {
     init();
 }
 
 void InternalRename::init ()
 {
-    try {
+    try
+    {
+        if (!fs::exists(mOldAbsPath))
+        {
+            mStatus = INVALID_SOURCE_PATH;
+            return;
+        }
         fs::rename(mOldAbsPath, mNewAbsPath);
-        mStatus = 100;
+        mStatus = SUCCESS;
     }
     catch(fs::filesystem_error& e) {
-        mStatus = -1;
+        mStatus = INVALID_DEST_PATH;
     }
 }
 
@@ -273,8 +359,31 @@ int32_t InternalRename::getStatus()
     return mStatus;
 }
 
+InternalCreateDir::InternalCreateDir(std::string path) : mPath(path), mStatus(NO_ERROR)
+{
+    init();
+}
+
+void InternalCreateDir::init ()
+{
+    try {
+        fs::create_directories(mPath);
+        mStatus = SUCCESS;
+    }
+    catch(fs::filesystem_error& e) {
+        mStatus = UNKNOWN;
+    }
+}
+
+int32_t InternalCreateDir::getStatus()
+{
+    return mStatus;
+}
+
 InternalOperationHandler::InternalOperationHandler()
 {
+    if (!fs::exists("/tmp/internal"))
+        fs::create_directories("/tmp/internal");
 }
 
 InternalOperationHandler& InternalOperationHandler::getInstance()

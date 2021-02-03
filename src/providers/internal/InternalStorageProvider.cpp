@@ -34,25 +34,6 @@ InternalStorageProvider::~InternalStorageProvider()
     }
 }
 
-ReturnValue InternalStorageProvider::attachCloud(AuthParam authParam)
-{
-    return nullptr;
-}
-
-ReturnValue InternalStorageProvider::authenticateCloud(AuthParam authParam)
-{
-    return nullptr;
-}
-
-ReturnValue InternalStorageProvider::listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit)
-{
-    return nullptr;
-}
-
-void InternalStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
-{
-}
-
 void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> reqData)
 {
     std::string path = reqData->params["path"].asString();
@@ -95,8 +76,10 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
     }
     else
     {
-        respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
-        respObj.put("errorText", "ERRORRRRRRR");
+        auto errorCode = getInternalErrorCode(contsPtr->getStatus());
+        auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
+        respObj.put("errorCode", errorCode);
+        respObj.put("errorText", errorStr);
     }
     reqData->cb(respObj, reqData->subs);
 }
@@ -120,8 +103,10 @@ void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData
     }
     else
     {
-        respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
-        respObj.put("errorText", "ERRORRRRRRR");
+        auto errorCode = getInternalErrorCode(propPtr->getStatus());
+        auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
+        respObj.put("errorCode", errorCode);
+        respObj.put("errorText", errorStr);
     }
     reqData->cb(respObj, reqData->subs);
 }
@@ -138,7 +123,7 @@ void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
     std::unique_ptr<InternalCopy> copyPtr = InternalOperationHandler::getInstance().copy(srcPath, destPath, overwrite);
 
     int retStatus = -1;
-    int prevStatus = -2;
+    int prevStatus = -20;
     while(1)
     {
         retStatus = copyPtr->getStatus();
@@ -152,12 +137,14 @@ void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
         }
         else
         {
-            respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
-            respObj.put("errorText", "ERRORRRRRRR");
+            auto errorCode = getInternalErrorCode(copyPtr->getStatus());
+            auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
+            respObj.put("errorCode", errorCode);
+            respObj.put("errorText", errorStr);
         }
         if (retStatus != prevStatus)
             reqData->cb(respObj, reqData->subs);
-        if ((retStatus == 100) || (retStatus == -1))
+        if ((retStatus >= 100) || (retStatus < 0))
             break;
         else
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -177,7 +164,7 @@ void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
     std::unique_ptr<InternalMove> movePtr = InternalOperationHandler::getInstance().move(srcPath, destPath, overwrite);
 
     int retStatus = -1;
-    int prevStatus = -2;
+    int prevStatus = -20;
     while(1)
     {
         retStatus = movePtr->getStatus();
@@ -191,12 +178,14 @@ void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
         }
         else
         {
-            respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
-            respObj.put("errorText", "ERRORRRRRRR");
+            auto errorCode = getInternalErrorCode(movePtr->getStatus());
+            auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
+            respObj.put("errorCode", errorCode);
+            respObj.put("errorText", errorStr);
         }
         if (retStatus != prevStatus)
             reqData->cb(respObj, reqData->subs);
-        if ((retStatus == 100) || (retStatus == -1))
+        if ((retStatus >= 100) || (retStatus < 0))
             break;
         else
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -214,8 +203,10 @@ void InternalStorageProvider::remove(std::shared_ptr<RequestData> reqData)
     respObj.put("returnValue", status);
     if (!status)
     {
-        respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
-        respObj.put("errorText", "ERRORRRRRRR");
+        auto errorCode = getInternalErrorCode(remPtr->getStatus());
+        auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
+        respObj.put("errorCode", errorCode);
+        respObj.put("errorText", errorStr);
     }
     reqData->cb(respObj, reqData->subs);
 }
@@ -231,8 +222,10 @@ void InternalStorageProvider::rename(std::shared_ptr<RequestData> reqData)
     respObj.put("returnValue", status);
     if (!status)
     {
-        respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
-        respObj.put("errorText", "ERRORRRRRRR");
+        auto errorCode = getInternalErrorCode(renamePtr->getStatus());
+        auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
+        respObj.put("errorCode", errorCode);
+        respObj.put("errorText", errorStr);
     }
     reqData->cb(respObj, reqData->subs);
 }
@@ -241,80 +234,25 @@ void InternalStorageProvider::eject(std::shared_ptr<RequestData> reqData)
 {
     pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", false);
-    respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
-    respObj.put("errorText", "ERRORRRRRRR");
+    respObj.put("errorCode", SAFErrors::InternalErrors::InternalErrorEnum::UNKNOWN_ERROR);
+    respObj.put("errorText", SAFErrors::InternalErrors::getInternalErrorString
+        (SAFErrors::InternalErrors::InternalErrorEnum::UNKNOWN_ERROR));
     reqData->cb(respObj, reqData->subs);
 }
 
-void InternalStorageProvider::format(std::shared_ptr<RequestData> reqData)
+void InternalStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
 {
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
-    respObj.put("returnValue", false);
-    respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
-    respObj.put("errorText", "ERRORRRRRRR");
-    reqData->cb(respObj, reqData->subs);
-}
-
-ReturnValue InternalStorageProvider::getProperties(AuthParam authParam) {
-    return nullptr;
-}
-
-ReturnValue InternalStorageProvider::copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
-{
-    return nullptr;
-}
-
-ReturnValue InternalStorageProvider::move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
-{
-    return nullptr;
-}
-
-ReturnValue InternalStorageProvider::remove(AuthParam authParam, string storageId, string path)
-{
-    return nullptr;
-}
-
-ReturnValue InternalStorageProvider::eject(string storageId)
-{
-    return nullptr;
-}
-
-ReturnValue InternalStorageProvider::format(string storageId, string fileSystem, string volumeLabel)
-{
-    return nullptr;
-}
-
-void InternalStorageProvider::testMethod(std::shared_ptr<RequestData> data)
-{
-    LOG_DEBUG_SAF("%s", __FUNCTION__);
-    std::string uri = "luna://com.webos.service.pdm/getAttachedStorageDeviceList";
-    std::string payload = R"({"subscribe": true})";
-    LSError lserror;
-    (void)LSErrorInit(&lserror);
-    ReqContext *ctxPtr = new ReqContext();
-    ctxPtr->ctx = this;
-    ctxPtr->reqData = std::move(data);
-
-    pbnjson::JValue nextReqArray = pbnjson::Array();
-#if 0
-    pbnjson::JValue nextObj1 = pbnjson::Object();
-    nextObj1.put("uri", uri);
-    nextObj1.put("payload", payload);
-    //nextObj1.put("params", payload);
-    nextReqArray.append(nextObj1);
-#endif
-    pbnjson::JValue nextObj2 = pbnjson::Object();
-    std::string uri2 = "luna://com.webos.service.pdm/isWritableDrive";
-    std::string payload2 = R"({"driveName": "sdg1"})";
-    nextObj2.put("uri", uri2);
-    nextObj2.put("payload", payload2);
-    //nextObj2.put("params", payload);
-    nextReqArray.append(nextObj2);
-
-    ctxPtr->reqData->params.put("nextReq", nextReqArray);
-    LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),
-                InternalStorageProvider::onReply, ctxPtr, NULL, &lserror);
-    //ToDo: Handle Error Scenarios
+    pbnjson::JValue gdriveResArr = pbnjson::Array();
+    pbnjson::JValue gdriveRes = pbnjson::Object();
+    gdriveRes.put("storgaeType", "INTERNAL");
+    gdriveRes.put("storgaeId", DEFAULT_INTERNAL_STORAGE_ID);
+    gdriveResArr.append(gdriveRes);
+    respObj.put("INTERNAL", gdriveResArr);
+    reqData->params.put("response", respObj);
+    reqData->cb(reqData->params, std::move(reqData->subs));
+    return;
 }
 
 void InternalStorageProvider::addRequest(std::shared_ptr<RequestData>& reqData)
@@ -368,13 +306,6 @@ void InternalStorageProvider::handleRequests(std::shared_ptr<RequestData> reqDat
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     switch(reqData->methodType)
     {
-        case MethodType::TEST_METHOD:
-        {
-            LOG_DEBUG_SAF("%s : MethodType::TEST_METHOD", __FUNCTION__);
-            auto fut = std::async(std::launch::async, [this, reqData]() { return this->testMethod(reqData); });
-            (void)fut;
-        }
-        break;
         case MethodType::LIST_METHOD:
         {
             LOG_DEBUG_SAF("%s : MethodType::LIST_METHOD", __FUNCTION__);
@@ -417,17 +348,17 @@ void InternalStorageProvider::handleRequests(std::shared_ptr<RequestData> reqDat
             (void)fut;
         }
         break;
-        case MethodType::FORMAT_METHOD:
-        {
-            LOG_DEBUG_SAF("%s : MethodType::FORMAT_METHOD", __FUNCTION__);
-            auto fut = std::async(std::launch::async, [this, reqData]() { return this->format(reqData); });
-            (void)fut;
-        }
-        break;
         case MethodType::RENAME_METHOD:
         {
             LOG_DEBUG_SAF("%s : MethodType::RENAME_METHOD", __FUNCTION__);
             auto fut = std::async(std::launch::async, [this, reqData]() { return this->rename(reqData); });
+            (void)fut;
+        }
+        break;
+        case MethodType::LIST_STORAGES_METHOD:
+        {
+            LOG_DEBUG_SAF("%s : MethodType::LIST_STORAGES_METHOD", __FUNCTION__);
+            auto fut = std::async(std::launch::async, [this, reqData]() { return this->listStoragesMethod(reqData); });
             (void)fut;
         }
         break;

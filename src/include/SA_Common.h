@@ -48,12 +48,10 @@ typedef pair<string,DataType> ValuePair;
 typedef map<string,ValuePair> ValuePairMap;
 typedef vector<shared_ptr<Content>> ContentList;
 typedef pair<shared_ptr<ValuePairMap>, shared_ptr<ContentList>> ResultPair;
-typedef shared_ptr<ResultPair> ReturnValue;
 
 typedef map<string, string> AuthParam;
 
 enum class MethodType {
-    TEST_METHOD,
     LIST_METHOD,
     GET_PROP_METHOD,
     LIST_STORAGES_METHOD,
@@ -61,9 +59,11 @@ enum class MethodType {
     MOVE_METHOD,
     REMOVE_METHOD,
     EJECT_METHOD,
-    FORMAT_METHOD,
-    RENAME_METHOD
+    RENAME_METHOD,
+    ATTACH_METHOD,
+    AUTHENTICATE_METHOD
 };
+
 
 class RequestData {
 public:

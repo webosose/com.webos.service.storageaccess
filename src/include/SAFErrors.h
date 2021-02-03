@@ -22,6 +22,62 @@
 
 namespace SAFErrors
 {
+	namespace InternalErrors
+	{
+		enum InternalErrorEnum
+		{
+			UNKNOWN_ERROR = 5000,
+			INVALID_PARAM,
+			INVALID_PATH,
+			INVALID_SOURCE_PATH,
+			INVALID_DEST_PATH,
+			FILE_ALREADY_EXISTS,
+			NO_ERROR,
+		};
+	    static std::map<int, std::string> mInternalErrorTextTable =
+	    {
+	        { UNKNOWN_ERROR, "Unknown Error" },
+	        { INVALID_PARAM, "Invalid Parameters" },
+	        { INVALID_PATH, "Invalid Path" },
+	        { INVALID_SOURCE_PATH, "Invalid Source Path" },
+	        { INVALID_DEST_PATH, "Invalid Destination Path" },
+	        { FILE_ALREADY_EXISTS, "File Already Exists" },
+	        { NO_ERROR, "No Error" }
+	    };
+		std::string getInternalErrorString(int errorCode);
+	}
+	namespace CloudErrors
+	{
+		enum CloudErrorsEnum
+		{
+			UNKNOWN_ERROR = 6000,
+			INVALID_PARAM,
+			INVALID_PATH,
+			INVALID_SOURCE_PATH,
+			INVALID_DEST_PATH,
+			FILE_ALREADY_EXISTS,
+			ATTACH_NOT_DONE,
+			AUTHENTICATION_NOT_DONE,
+			ALREADY_AUTHENTICATED,
+			INVALID_URL,
+			INVALID_FILE
+		};
+	    static std::map<int, std::string> mCloudErrorTextTable =
+	    {
+	        { UNKNOWN_ERROR, "Unknown Error" },
+	        { INVALID_PARAM, "Invalid Parameters" },
+	        { INVALID_PATH, "Invalid Path" },
+	        { INVALID_SOURCE_PATH, "Invalid Source Path" },
+	        { INVALID_DEST_PATH, "Invalid Destination Path" },
+	        { FILE_ALREADY_EXISTS, "File Already Exists" },
+	        { ATTACH_NOT_DONE, "Attach Cloud Not Done" },
+			{ AUTHENTICATION_NOT_DONE, "Authentication Not Done" },
+			{ ALREADY_AUTHENTICATED, "Already Authenticated" },
+			{ INVALID_URL, "Invalid URL" },
+			{ INVALID_FILE, "File Not Supported" },
+	    };
+		std::string getCloudErrorString(int errorCode);
+	}
 
     enum SAFErrors
     {
@@ -37,6 +93,7 @@ namespace SAFErrors
         INVALID_JSON_FORMAT,
         INPUT_TEXT_EMPTY,
         ERROR_NONE,
+        INVALID_COMMAND,
         SAF_ERROR_NOT_SUPPORTED = 8282,
     };
 

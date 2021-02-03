@@ -15,11 +15,19 @@
 
 #include "DocumentProvider.h"
 #include "DocumentProviderFactory.h"
+#include "GDriveOperation.h"
 #include <iostream>
 #include "gdrive/gdrive.hpp"
 #include <assert.h>
 #include <vector>
 #include <SAFLog.h>
+#include <map>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <SAFErrors.h>
+
+
 
 using namespace std;
 using namespace GDRIVE;
@@ -29,17 +37,18 @@ class GDriveProvider: public DocumentProvider
 public:
     GDriveProvider();
     virtual ~GDriveProvider();
-    ReturnValue attachCloud(AuthParam authParam);
-    ReturnValue authenticateCloud(AuthParam authParam);
-    ReturnValue listFolderContents(AuthParam authParam, string storageType, string path, int offset, int limit);
-    ReturnValue getProperties(AuthParam authParam);
-    ReturnValue copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue remove(AuthParam authParam, string storageId, string path);
-    ReturnValue eject(string storageId);
-    ReturnValue format(string storageId, string fileSystem, string volumeLabel);
-
-	void addRequest(std::shared_ptr<RequestData>&) {}
+    void addRequest(std::shared_ptr<RequestData>&);
+    void dispatchHandler();
+    void handleRequests(std::shared_ptr<RequestData>);
+    void attachCloud(std::shared_ptr<RequestData> reqData);
+    void authenticateCloud(std::shared_ptr<RequestData> reqData);
+    void list(std::shared_ptr<RequestData> reqData);
+    void getProperties(std::shared_ptr<RequestData> reqData);
+    void remove(std::shared_ptr<RequestData> reqData);
+    void copy(std::shared_ptr<RequestData> reqData);
+    void move(std::shared_ptr<RequestData> reqData);
+    void rename(std::shared_ptr<RequestData> reqData);
+    void listStoragesMethod(std::shared_ptr<RequestData> reqData);
 
 private:
     void getFilesFromPath(vector<string> &, const string&);
@@ -52,6 +61,17 @@ private:
     void setErrorMessage(shared_ptr<ValuePairMap>, string);
 
     map<string, string> mimetypesMap;
+    std::vector<std::shared_ptr<RequestData>> mQueue;
+    std::thread mDispatcherThread;
+    std::mutex mMutex;
+    std::condition_variable mCondVar;
+    volatile bool mQuit = false;
+
+private:
+    GDriveOperation mGDriveOperObj;
+    AuthParam mAuthParam;
+    std::shared_ptr<Credential> mCred;
+    std::string mUser;
 };
 
 #endif /* _GDRIVE_PROVIDER_H_ */

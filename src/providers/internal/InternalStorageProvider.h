@@ -25,25 +25,15 @@
 #include <pbnjson.hpp>
 
 #define DEFAULT_INTERNAL_PATH "/tmp/internal"
-
+#define DEFAULT_INTERNAL_STORAGE_ID	"INTERNAL_STORAGE"
 class InternalStorageProvider: public DocumentProvider
 {
 public:
     InternalStorageProvider();
     virtual ~InternalStorageProvider();
-    ReturnValue attachCloud(AuthParam authParam);
-    ReturnValue authenticateCloud(AuthParam authParam);
-	ReturnValue listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit);
-    ReturnValue getProperties(AuthParam authParam);
-    ReturnValue copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite);
-    ReturnValue remove(AuthParam authParam, string storageId, string path);
-    ReturnValue eject(string storageId);
-    ReturnValue format(string storageId, string fileSystem, string volumeLabel);
-
+	void addRequest(std::shared_ptr<RequestData>&);
 	void dispatchHandler();
     void handleRequests(std::shared_ptr<RequestData>);
-    void addRequest(std::shared_ptr<RequestData>&);
 	void listStoragesMethod(std::shared_ptr<RequestData> reqData);
     void listFolderContents(std::shared_ptr<RequestData> reqData);
 	void getProperties(std::shared_ptr<RequestData> reqData);
@@ -52,8 +42,6 @@ public:
     void remove(std::shared_ptr<RequestData> reqData);
 	void rename(std::shared_ptr<RequestData> reqData);
     void eject(std::shared_ptr<RequestData> reqData);
-    void format(std::shared_ptr<RequestData> reqData);
-    void testMethod(std::shared_ptr<RequestData>);
     static bool onReply(LSHandle*, LSMessage*, void*);
 
 private:

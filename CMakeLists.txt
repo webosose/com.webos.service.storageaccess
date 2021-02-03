@@ -49,6 +49,7 @@ endif()
 set(INC_FILES
     src/include
     src/providers/gdrive/include
+    src/providers/internal
     )
 include_directories(${INC_FILES})
 
@@ -57,9 +58,9 @@ file(GLOB SAF_SOURCE
         ${CMAKE_SOURCE_DIR}/src/utils/*.cpp
         ${CMAKE_SOURCE_DIR}/src/luna/*.cpp
         ${CMAKE_SOURCE_DIR}/src/core/*.cpp
-        ${CMAKE_SOURCE_DIR}/src/providers/gdrive/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/usb/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/internal/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/providers/gdrive/*.cpp
         ${CMAKE_SOURCE_DIR}/src/main.cpp
 )
 

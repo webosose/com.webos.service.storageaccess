@@ -39,7 +39,6 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
     {
         return rootObj[0];
     }
-    responseObj.put("returnValue", ret);
     if(ret)
     {
         for(int i = 0; i < numUSBDevices; i++)
@@ -74,7 +73,7 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
             }
             responseArray.append(rObj);
         }
-        responseObj.put("USB Storage", responseArray);
+        responseObj.put("USB", responseArray);
     }
     return responseObj;
 }

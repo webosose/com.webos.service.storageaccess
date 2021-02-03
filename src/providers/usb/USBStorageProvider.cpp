@@ -18,6 +18,7 @@
 #include "SAFLunaService.h"
 #include "USBOperationHandler.h"
 #include "USBErrors.h"
+#include "InternalOperationHandler.h"
 
 #define SAF_USB_ATTACH_METHOD  "luna://com.webos.service.pdm/getAttachedStorageDeviceList"
 #define SAF_USB_WRITE_Q_METHOD "luna://com.webos.service.pdm/isWritableDrive"
@@ -41,83 +42,6 @@ USBStorageProvider::~USBStorageProvider()
     {
         mDispatcherThread.join();
     }
-}
-
-ReturnValue USBStorageProvider::attachCloud(AuthParam authParam)
-{
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::authenticateCloud(AuthParam authParam)
-{
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::listFolderContents(AuthParam authParam, string storageId, string path, int offset, int limit)
-{
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::getProperties(AuthParam authParam)
-{
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::copy(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
-{
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::move(AuthParam srcAuthParam, StorageType srcStorageType, string srcStorageId, string srcPath, AuthParam destAuthParam, StorageType destStorageType, string destStorageId, string destPath, bool overwrite)
-{
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::remove(AuthParam authParam, string storageId, string path)
-{
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::eject(string storageId)
-{
-    return nullptr;
-}
-
-ReturnValue USBStorageProvider::format(string storageId, string fileSystem, string volumeLabel)
-{
-    return nullptr;
-}
-
-void USBStorageProvider::testMethod(std::shared_ptr<RequestData> data)
-{
-    LOG_DEBUG_SAF("%s", __FUNCTION__);
-    std::string uri = SAF_USB_ATTACH_METHOD;
-    std::string payload = R"({"subscribe": true})";
-    LSError lserror;
-    (void)LSErrorInit(&lserror);
-    ReqContext *ctxPtr = new ReqContext();
-    ctxPtr->ctx = this;
-    ctxPtr->reqData = std::move(data);
-
-    pbnjson::JValue nextReqArray = pbnjson::Array();
-#if 0
-    pbnjson::JValue nextObj1 = pbnjson::Object();
-    nextObj1.put("uri", uri);
-    nextObj1.put("payload", payload);
-    //nextObj1.put("params", payload);
-    nextReqArray.append(nextObj1);
-#endif
-    pbnjson::JValue nextObj2 = pbnjson::Object();
-    std::string uri2 = SAF_USB_WRITE_Q_METHOD;
-    std::string payload2 = R"({"driveName": "sdg1"})";
-    nextObj2.put("uri", uri2);
-    nextObj2.put("payload", payload2);
-    //nextObj2.put("params", payload);
-    nextReqArray.append(nextObj2);
-
-    ctxPtr->reqData->params.put("nextReq", nextReqArray);
-    LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(), USBStorageProvider::onReply, ctxPtr, NULL, &lserror);
-    //ToDo: Handle Error Scenarios
 }
 
 void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
@@ -177,9 +101,51 @@ void USBStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> data)
     nextReqArray.append(nextObj);
 
     LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),
-                USBStorageProvider::onReply, ctxPtr, NULL, &lserror);
+                USBStorageProvider::onListStoragesMethodReply, ctxPtr, NULL, &lserror);
 }
 
+
+bool USBStorageProvider::onListStoragesMethodReply(LSHandle *sh, LSMessage *message , void *ctx)
+{
+    LOG_DEBUG_SAF("%s: [%s]", __FUNCTION__, LSMessageGetPayload(message));
+    LSError lserror;
+    (void)LSErrorInit(&lserror);
+    LSCallCancel(sh, NULL, &lserror);
+    ReqContext *ctxPtr = static_cast<ReqContext*>(ctx);
+    USBStorageProvider* self = static_cast<USBStorageProvider*>(ctxPtr->ctx);
+    pbnjson::JSchema parseSchema = pbnjson::JSchema::AllSchema();
+    pbnjson::JDomParser parser;
+    std::string payload = LSMessageGetPayload(message);
+    if (parser.parse(payload, parseSchema))
+    {
+        pbnjson::JValue root = parser.getDom();
+        if (!ctxPtr->reqData->params.hasKey("response"))
+        {
+            pbnjson::JValue respArray = pbnjson::Array();
+            ctxPtr->reqData->params.put("response", respArray);
+        }
+        pbnjson::JValue respArray = ctxPtr->reqData->params["response"];
+        respArray.append(root);
+        ctxPtr->reqData->params.put("response", respArray);
+        if (ctxPtr->reqData->params.hasKey("nextReq") &&
+            ctxPtr->reqData->params["nextReq"].isArray() &&
+            (ctxPtr->reqData->params["nextReq"].arraySize() > 0))
+        {
+            std::string uri = ctxPtr->reqData->params["nextReq"][0]["uri"].asString();
+            std::string payload = ctxPtr->reqData->params["nextReq"][0]["payload"].asString();
+            pbnjson::JValue nextReqArr = pbnjson::Array();
+            for (int i=1; i< ctxPtr->reqData->params["nextReq"].arraySize(); ++i)
+                nextReqArr.append(ctxPtr->reqData->params["nextReq"][i]);
+            ctxPtr->reqData->params.put("nextReq", nextReqArr);
+            LOG_DEBUG_SAF("======================Call:%s=========Payload:%s", uri.c_str(), payload.c_str());
+            LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),
+                USBStorageProvider::onReply, ctxPtr, NULL, &lserror);
+        }
+        else
+            ctxPtr->reqData->cb(ctxPtr->reqData->params, std::move(ctxPtr->reqData->subs));
+    }
+    return true;
+}
 void USBStorageProvider::ejectMethod(std::shared_ptr<RequestData> data)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
@@ -235,11 +201,9 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
     bool overwrite = false;
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
-
-    std::unique_ptr<USBCopy> copyPtr = USBOperationHandler::getInstance().copy(srcPath, destPath, overwrite);
-
+    std::unique_ptr<InternalCopy> copyPtr = InternalOperationHandler::getInstance().copy(srcPath, destPath, overwrite);
     int retStatus = -1;
-    int prevStatus = -2;
+    int prevStatus = -20;
     while(1)
     {
         retStatus = copyPtr->getStatus();
@@ -258,7 +222,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
         }
         if (retStatus != prevStatus)
             reqData->cb(respObj, reqData->subs);
-        if ((retStatus == 100) || (retStatus == -1))
+        if ((retStatus >= 100) || (retStatus < 0))
             break;
         else
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -278,7 +242,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
     std::unique_ptr<USBMove> movePtr = USBOperationHandler::getInstance().move(srcPath, destPath, overwrite);
 
     int retStatus = -1;
-    int prevStatus = -2;
+    int prevStatus = -20;
     while(1)
     {
         retStatus = movePtr->getStatus();
@@ -297,7 +261,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
         }
         if (retStatus != prevStatus)
             reqData->cb(respObj, reqData->subs);
-        if ((retStatus == 100) || (retStatus == -1))
+        if ((retStatus >= 100) || (retStatus == -1))
             break;
         else
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -558,13 +522,6 @@ void USBStorageProvider::handleRequests(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     switch(reqData->methodType)
     {
-        case MethodType::TEST_METHOD:
-        {
-            LOG_DEBUG_SAF("%s : MethodType::TEST_METHOD", __FUNCTION__);
-            auto fut = std::async(std::launch::async, [this, reqData]() { return this->testMethod(reqData); });
-            (void)fut;
-        }
-        break;
         case MethodType::LIST_STORAGES_METHOD:
         {
             LOG_DEBUG_SAF("%s : MethodType::LIST_STORAGES_METHOD", __FUNCTION__);
@@ -583,13 +540,6 @@ void USBStorageProvider::handleRequests(std::shared_ptr<RequestData> reqData)
         {
             LOG_DEBUG_SAF("%s : MethodType::EJECT_METHOD", __FUNCTION__);
             auto fut = std::async(std::launch::async, [this, reqData]() { return this->ejectMethod(reqData); });
-            (void)fut;
-        }
-        break;
-        case MethodType::FORMAT_METHOD:
-        {
-            LOG_DEBUG_SAF("%s : MethodType::FORMAT_METHOD", __FUNCTION__);
-            auto fut = std::async(std::launch::async, [this, reqData]() { return this->formatMethod(reqData); });
             (void)fut;
         }
         break;

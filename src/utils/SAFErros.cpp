@@ -28,3 +28,27 @@ std::string SAFErrors::getSAFErrorString(int errorCode)
     return errorText;
 }
 
+std::string SAFErrors::InternalErrors::getInternalErrorString(int errorCode)
+{
+    LOG_TRACE("Entering function %s", __FUNCTION__);
+    std::string errorText = "Unknown Error";
+    if (InternalErrors::mInternalErrorTextTable.find(errorCode) != 
+        InternalErrors::mInternalErrorTextTable.end())
+    {
+        errorText = InternalErrors::mInternalErrorTextTable[errorCode];
+    }
+    return errorText;
+}
+
+std::string SAFErrors::CloudErrors::getCloudErrorString(int errorCode)
+{
+    LOG_TRACE("Entering function %s", __FUNCTION__);
+    std::string errorText = "Unknown Error";
+    if (CloudErrors::mCloudErrorTextTable.find(errorCode) != 
+        CloudErrors::mCloudErrorTextTable.end())
+    {
+        errorText = CloudErrors::mCloudErrorTextTable[errorCode];
+    }
+    return errorText;
+}
+
