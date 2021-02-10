@@ -64,7 +64,8 @@ private :
     std::shared_ptr<DocumentProviderManager> mDocumentProviderManager;
     AuthParam mAuthParam;
     void registerService();
-	StorageType getStorageDeviceType(pbnjson::JValue jsonObj);
+    StorageType getStorageDeviceType(pbnjson::JValue jsonObj);
+    StorageType getStorageDeviceType(std::string type);
 };
 #endif /* SRC_LUNA_SAFLUNASERVICE_H_ */
 

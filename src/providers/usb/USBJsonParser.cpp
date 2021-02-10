@@ -16,18 +16,23 @@
 
 pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
 {
-    LOG_DEBUG_SAF("=====================Entering ParseListOfStorages============================");
+    LOG_DEBUG_SAF("%s", __FUNCTION__);
     int numUSBDevices = 0;
-    pbnjson::JValue rawObj = rootObj;
-    pbnjson::JValue replyObj = rawObj[0];
+    pbnjson::JValue replyObj = rootObj;
     pbnjson::JValue usbArray = pbnjson::Array();
     pbnjson::JValue responseArray = pbnjson::Array();
     pbnjson::JValue responseObj = pbnjson::Object();
-
+    std::string sid = "";
     bool ret = replyObj["returnValue"].asBool();
 
     if(ret)
     {
+        if(replyObj.hasKey("deviceListInfo") && replyObj["deviceListInfo"].isArray() && replyObj["deviceListInfo"].arraySize() > 1)
+        {
+            responseObj.put("returnValue", false);
+            responseObj.put("errorCode", USBErrors::MORE_ATTACHED_STORAGES_THAN_USB);
+            responseObj.put("errorText", USBErrors::getUSBErrorString(USBErrors::MORE_ATTACHED_STORAGES_THAN_USB));
+        }
         if(replyObj.hasKey("deviceListInfo") && replyObj["deviceListInfo"][0].hasKey("storageDeviceList"))
         {
             usbArray = replyObj["deviceListInfo"][0]["storageDeviceList"];
@@ -37,41 +42,32 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
     LOG_DEBUG_SAF("Number of USB devices attached:%d", numUSBDevices);
     if(numUSBDevices == 0)
     {
-        return rootObj[0];
+        responseObj.put("USB", responseArray);
+        return responseObj;
     }
     if(ret)
     {
         for(int i = 0; i < numUSBDevices; i++)
         {
-            pbnjson::JValue rObj = pbnjson::Object();
-            if(usbArray[i].hasKey("serialNumber"))
-                rObj.put("storgaeId", usbArray[i]["serialNumber"]);
-            if(usbArray[i].hasKey("deviceType"))
-                rObj.put("storgaeType", usbArray[i]["deviceType"]);
-            if(usbArray[i].hasKey("deviceSetId"))
-                rObj.put("storageSetId", usbArray[i]["deviceSetId"]);
-            if(usbArray[i].hasKey("deviceNum"))
-                rObj.put("storageNumber", usbArray[i]["deviceNum"]);
-
             if(usbArray[i].hasKey("storageDriveList"))
             {
-                pbnjson::JValue partitionArray = pbnjson::Array();
+                pbnjson::JValue rObj = pbnjson::Object();
                 for(int j = 0; j < usbArray[i]["storageDriveList"].arraySize(); j++)
                 {
-                    pbnjson::JValue rObj2 = pbnjson::Object();
+                    pbnjson::JValue rObj = pbnjson::Object();
                     if(usbArray[i]["storageDriveList"][j].hasKey("driveName"))
-                        rObj2.put("storgaeName", usbArray[i]["storageDriveList"][j]["driveName"]);
+                        rObj.put("storgaeName", usbArray[i]["storageDriveList"][j]["driveName"]);
                     if(usbArray[i]["storageDriveList"][j].hasKey("uuid"))
-                        rObj2.put("uuid", usbArray[i]["storageDriveList"][j]["uuid"]);
+                        sid = usbArray[i]["serialNumber"].asString() + "-" + usbArray[i]["storageDriveList"][j]["uuid"].asString();
+                        rObj.put("storageId", sid);
+                        sid = "";
                     if(usbArray[i]["storageDriveList"][j].hasKey("fsType"))
-                        rObj2.put("fsType", usbArray[i]["storageDriveList"][j]["fsType"]);
-                    if(usbArray[i]["storageDriveList"][j].hasKey("mountPath"))
-                        rObj2.put("mountPath", usbArray[i]["storageDriveList"][j]["mountPath"]);
-                    partitionArray.append(rObj2);
+                        rObj.put("fsType", usbArray[i]["storageDriveList"][j]["fsType"]);
+                    if(usbArray[i]["storageDriveList"][j].hasKey("mountName"))
+                        rObj.put("mountPath", usbArray[i]["storageDriveList"][j]["mountName"]);
+                    responseArray.append(rObj);
                 }
-                rObj.put("storageDriveList", partitionArray);
             }
-            responseArray.append(rObj);
         }
         responseObj.put("USB", responseArray);
     }
@@ -80,7 +76,7 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
 
 pbnjson::JValue USBPbnJsonParser::ParseGetProperties(pbnjson::JValue rootObj, std::string deviceStorageId)
 {
-    LOG_DEBUG_SAF("=====================Entering ParseGetProperties============================");
+    LOG_DEBUG_SAF("%s", __FUNCTION__);
     pbnjson::JValue rawObj = rootObj;
     pbnjson::JValue respObj = pbnjson::Object();
 
@@ -98,17 +94,9 @@ pbnjson::JValue USBPbnJsonParser::ParseGetProperties(pbnjson::JValue rootObj, st
     for(int i = 0; i < rootObj.arraySize(); ++i)
     {
         pbnjson::JValue eachObj = rootObj[i];
-        if(eachObj.hasKey("deviceListInfo") && eachObj["deviceListInfo"].arraySize() == 1)
+        if(eachObj.hasKey("storageType"))
         {
-            pbnjson::JValue storageDeviceList = eachObj["deviceListInfo"][0]["storageDeviceList"];
-            for (int i=0; i<storageDeviceList.arraySize(); ++i)
-            {
-                if(storageDeviceList[i]["serialNumber"].asString().compare(deviceStorageId.substr(0,deviceStorageId.find("-"))) == 0)
-                {
-                    respObj.put("storageType", storageDeviceList[i]["deviceType"].asString());
-                    break;
-                }
-            }
+            respObj.put("storageType", eachObj["storageType"].asString());
         }
         else if(eachObj.hasKey("isWritable"))
         {
@@ -119,12 +107,6 @@ pbnjson::JValue USBPbnJsonParser::ParseGetProperties(pbnjson::JValue rootObj, st
             pbnjson::JValue infoObj = eachObj["spaceInfo"];
             respObj.put("totalSpace", infoObj["totalSize"]);
             respObj.put("freeSpace",  infoObj["freeSize"]);
-        }
-        else
-        {
-            respObj.put("returnValue", false);
-            respObj.put("errorCode", USBErrors::MORE_ATTACHED_STORAGES_THAN_USB);
-            respObj.put("errorText", USBErrors::getUSBErrorString(USBErrors::MORE_ATTACHED_STORAGES_THAN_USB));
         }
     }
     return respObj;

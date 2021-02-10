@@ -94,6 +94,7 @@ namespace SAFErrors
         INPUT_TEXT_EMPTY,
         ERROR_NONE,
         INVALID_COMMAND,
+        STORAGE_TYPE_NOT_SUPPORTED,
         SAF_ERROR_NOT_SUPPORTED = 8282,
     };
 
@@ -123,6 +124,7 @@ namespace SAFErrors
         { INVALID_JSON_FORMAT, "Invalid JSON format" },
         { INPUT_TEXT_EMPTY, "Input text must not be empty" },
         { ERROR_NONE, "No error" },
+        { STORAGE_TYPE_NOT_SUPPORTED, "Storage Type not supported"},
     };
 
     std::string getSAFErrorString(int errorCode);

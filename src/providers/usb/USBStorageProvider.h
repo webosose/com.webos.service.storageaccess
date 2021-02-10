@@ -24,6 +24,33 @@
 #include <luna-service2/lunaservice.hpp>
 #include <pbnjson.hpp>
 
+class USBDriveInfo
+{
+public :
+    string mDriveName;
+    string mMountPath;
+    string mFsType;
+    string mUuid;
+    string mVolumeLabel;
+    bool mIsMounted;
+};
+
+class USBDeviceInfo
+{
+public :
+    string mStorageType;
+    string mSerialNumber;
+    int mDeviceNumber;
+    string mDeviceSetId;
+    vector<shared_ptr<USBDriveInfo>> mStorageDriveList;
+};
+
+class USBAttached
+{
+public:
+    std::map<std::string, std::shared_ptr<USBDeviceInfo>> usbStorages;
+};
+
 class USBStorageProvider: public DocumentProvider
 {
 public:
@@ -33,7 +60,6 @@ public:
     void dispatchHandler();
     void handleRequests(std::shared_ptr<RequestData>);
     void listStoragesMethod(std::shared_ptr<RequestData>);
-    static bool onListStoragesMethodReply(LSHandle*, LSMessage*, void*);
     void getPropertiesMethod(std::shared_ptr<RequestData>);
     void ejectMethod(std::shared_ptr<RequestData>);
     void formatMethod(std::shared_ptr<RequestData>);
@@ -42,8 +68,18 @@ public:
     void removeMethod(std::shared_ptr<RequestData>);
     void renameMethod(std::shared_ptr<RequestData>);
     void listFolderContentsMethod(std::shared_ptr<RequestData>);
+    void populateDeviceInfo(pbnjson::JValue);
+    void printUSBInfo();
+    std::string getDriveName(std::string storageId);
+    std::string getDriveName(std::string deviceId, std::string subId);
+    std::string getStorageType(std::string deviceId);
+    bool isStorageIdExists(std::string storageId);
+    void cleanDeviceInfo();
+    bool isStorageDriveMounted(std::string actualDevId);
+    int getStorageNumber(std::string actualDevId);
     static bool onReply(LSHandle*, LSMessage*, void*);
     static bool onGetPropertiesReply(LSHandle*, LSMessage*, void*);
+    static bool onListStoragesMethodReply(LSHandle*, LSMessage*, void*);
 
 private:
     std::vector<std::shared_ptr<RequestData>> mQueue;
@@ -51,8 +87,7 @@ private:
     std::mutex mMutex;
     std::condition_variable mCondVar;
     volatile bool mQuit;
-    static string storageId;
-    static string driveName;
+    std::shared_ptr<USBAttached> deviceInfo;
 };
 
 #endif /* _USB_STORAGE_PROVIDER_H_ */

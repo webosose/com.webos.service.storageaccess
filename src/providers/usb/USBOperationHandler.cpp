@@ -20,6 +20,24 @@
 #include "SAFLog.h"
 namespace fs = std::filesystem;
 
+int getUSBErrorCode(int errorCode)
+{
+    static std::map<int, int> convMap = {
+        {USBOperErrors::NO_ERROR,              USBErrors::USBErrors::ERROR_NONE},
+        {USBOperErrors::UNKNOWN,               USBErrors::USBErrors::USB_UNKNOWN_ERROR},
+        {USBOperErrors::INVALID_PATH,          USBErrors::USBErrors::INVALID_PATH},
+        {USBOperErrors::INVALID_SOURCE_PATH,   USBErrors::USBErrors::INVALID_SOURCE_PATH},
+        {USBOperErrors::INVALID_DEST_PATH,     USBErrors::USBErrors::INVALID_DEST_PATH},
+        {USBOperErrors::FILE_ALREADY_EXISTS,   USBErrors::USBErrors::FILE_ALREADY_EXISTS},
+        {USBOperErrors::SUCCESS,               USBErrors::USBErrors::ERROR_NONE},
+    };
+
+    int retCode = USBErrors::USBErrors::USB_UNKNOWN_ERROR;
+    if (convMap.find(errorCode) != convMap.end())
+        retCode = convMap[errorCode];
+    return retCode;
+}
+
 USBFolderContent::USBFolderContent(std::string absPath) : mPath(absPath)
 {
     init();
@@ -77,7 +95,7 @@ uint32_t USBFolderContent::getFileSize(std::string filePath)
     return size;
 }
 
-USBFolderContents::USBFolderContents(std::string fullPath) : mFullPath(fullPath), mStatus(0)
+USBFolderContents::USBFolderContents(std::string fullPath) : mFullPath(fullPath), mStatus(NO_ERROR)
 {
     init();
 }
@@ -99,48 +117,70 @@ void USBFolderContents::init()
     }
     catch(fs::filesystem_error& e) {
         mTotalCount = 0;
-        mStatus = -1;
+        mStatus = INVALID_PATH;
+        this->mErrMsg = e.what();
     }
     mTotalCount = mContents.size();
 }
 
 USBCopy::USBCopy(std::string src, std::string dest, bool overwrite)
-    : mSrcPath(src), mDestPath(dest), mStatus(0), mOverwrite(overwrite)
+    : mSrcPath(src), mDestPath(dest), mStatus(NO_ERROR), mOverwrite(overwrite)
 {
     init();
 }
 
 void USBCopy::init()
 {
-    mSrcSize  = USBFolderContent(mSrcPath).getSize();
-    mDestSize = USBFolderContent(mDestPath).getSize();
-    std::async(std::launch::async, [this]()
-    {
-        try {
-            auto copyOptions = fs::copy_options::recursive | fs::copy_options::skip_symlinks;
-            if (this->mOverwrite)
-                copyOptions |= fs::copy_options::overwrite_existing;
-            else
-                copyOptions |= fs::copy_options::skip_existing;
-            fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
-            this->mStatus = 100;
-        }
-        catch(fs::filesystem_error& e) {
-            this->mStatus = -1;
-        }
-    });
+     if (!fs::exists(mSrcPath))
+     {
+         mStatus = INVALID_SOURCE_PATH;
+         return;
+     }
+     if (!fs::exists(mDestPath))
+     {
+         mStatus = INVALID_DEST_PATH;
+         return;
+     }
+     std::string desPath = mDestPath + mSrcPath.substr(mSrcPath.rfind("/"));
+     if (fs::exists(desPath) & !mOverwrite)
+     {
+         mStatus = FILE_ALREADY_EXISTS;
+         return;
+     }
+     if (fs::is_directory(mSrcPath))
+     {
+         if (!fs::exists(desPath))
+             fs::create_directories(desPath);
+         mDestPath = desPath;
+     }
+     mSrcSize = USBFolderContent(mSrcPath).getSize();
+     mDestSize = USBFolderContent(mDestPath).getSize();
+     std::async(std::launch::async, [this]()
+         {
+             try {
+                 auto copyOptions = fs::copy_options::recursive
+                            | fs::copy_options::skip_symlinks;
+                 if (this->mOverwrite)
+                     copyOptions |= fs::copy_options::overwrite_existing;
+                 else
+                     copyOptions |= fs::copy_options::skip_existing;
+                 fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
+                 this->mStatus = SUCCESS;
+             }
+             catch(fs::filesystem_error& e) {
+                 this->mStatus = INVALID_DEST_PATH;
+             }
+         });
 }
 
 std::uint32_t USBCopy::getStatus()
 {
     uint32_t size = USBFolderContent(mDestPath).getSize();
-    uint32_t change = (mSrcSize - size);
-    if ((mStatus != -1) && (change > 0))
+    uint32_t change = (mSrcSize - size + mDestSize);
+    if ((mStatus >= NO_ERROR) && (change > 0))
         mStatus = int(change / mSrcSize * 100);
-    else if ((mStatus != -1) && (change == 0))
-        mStatus = 100;
-    else
-        mStatus = -1;
+    else if ((mStatus >= NO_ERROR) && (change == 0))
+        mStatus = SUCCESS;
     return mStatus;
 }
 
@@ -150,7 +190,7 @@ std::string USBCopy::getErrorMsg()
 }
 
 USBRemove::USBRemove(std::string path)
-    : mPath(path), mStatus(0)
+    : mPath(path), mStatus(NO_ERROR)
 {
     init();
 }
@@ -161,14 +201,13 @@ void USBRemove::init()
         if (fs::exists(mPath))
         {
             fs::remove_all(mPath);
-            mStatus = 100;
+            mStatus = SUCCESS;
         }
         else
-            mStatus = -1;
+            mStatus = INVALID_PATH;
     }
     catch(fs::filesystem_error& e) {
-        mStatus = -1;
-        this->mErrMsg = e.what();
+        mStatus = INVALID_PATH;
     }
 }
 
@@ -183,26 +222,69 @@ std::string USBRemove::getErrorMsg()
 }
 
 USBMove::USBMove(std::string srcPath, std::string destPath, bool overwrite)
-    : mSrcPath(srcPath), mDestPath(destPath), mStatus(0), mOverwrite(overwrite)
+    : mSrcPath(srcPath), mDestPath(destPath), mStatus(NO_ERROR), mOverwrite(overwrite)
 {
     init();
 }
 
 void USBMove::init()
 {
-    USBRename obj = USBRename(mSrcPath, mDestPath);
-    mStatus = obj.getStatus();
-    if ((mStatus == -1) && mOverwrite)
-    {
-        USBRemove remObj = USBRemove(mDestPath);
-        mStatus = remObj.getStatus();
-        USBRename retryObj = USBRename(mSrcPath, mDestPath);
-        mStatus = retryObj.getStatus();
+    try {
+        if (!fs::exists(mSrcPath))
+        {
+            mStatus = INVALID_SOURCE_PATH;
+            return;
+        }
+        if (!fs::exists(mDestPath))
+        {
+            mStatus = INVALID_DEST_PATH;
+            return;
+        }
+        std::string desPath = mDestPath + mSrcPath.substr(mSrcPath.rfind("/"));
+        if (fs::exists(desPath) & !mOverwrite)
+        {
+            mStatus = FILE_ALREADY_EXISTS;
+            return;
+        }
+        if (fs::is_directory(mSrcPath))
+        {
+            if (!fs::exists(desPath))
+                fs::create_directories(desPath);
+            mDestPath = desPath;
+        }
+        mSrcSize = USBFolderContent(mSrcPath).getSize();
+        mDestSize = USBFolderContent(mDestPath).getSize();
+        std::async(std::launch::async, [this]()
+            {
+                try {
+                    auto copyOptions = fs::copy_options::recursive
+                               | fs::copy_options::skip_symlinks;
+                    if (this->mOverwrite)
+                        copyOptions |= fs::copy_options::overwrite_existing;
+                    else
+                        copyOptions |= fs::copy_options::skip_existing;
+                    fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
+                    this->mStatus = SUCCESS;
+                }
+                catch(fs::filesystem_error& e) {
+                    this->mStatus = INVALID_DEST_PATH;
+                }
+            });
+        fs::remove_all(mSrcPath);
+    }
+    catch(fs::filesystem_error& e) {
+        mStatus = UNKNOWN;
     }
 }
 
 int32_t USBMove::getStatus()
 {
+    uint32_t size = USBFolderContent(mDestPath).getSize();
+    uint32_t change = (mSrcSize - size + mDestSize);
+    if ((mStatus >= NO_ERROR) && (change > 0))
+        mStatus = int(change / mSrcSize * 100);
+    else if ((mStatus >= NO_ERROR) && (change == 0))
+        mStatus = SUCCESS;
     return mStatus;
 }
 
@@ -212,25 +294,36 @@ std::string USBMove::getErrorMsg()
 }
 
 USBRename::USBRename(std::string oldAbsPath, std::string newAbsPath)
-    : mOldAbsPath(oldAbsPath), mNewAbsPath(newAbsPath), mStatus(0)
+    : mOldAbsPath(oldAbsPath), mNewAbsPath(newAbsPath), mStatus(NO_ERROR)
 {
     init();
 }
 
 void USBRename::init ()
 {
-    try {
+    try
+    {
+        if (!fs::exists(mOldAbsPath))
+        {
+            mStatus = INVALID_SOURCE_PATH;
+            return;
+        }
         fs::rename(mOldAbsPath, mNewAbsPath);
-        mStatus = 100;
+        mStatus = SUCCESS;
     }
     catch(fs::filesystem_error& e) {
-        mStatus = -1;
+        mStatus = INVALID_DEST_PATH;
     }
 }
 
 int32_t USBRename::getStatus()
 {
     return mStatus;
+}
+
+std::string USBRename::getErrorMsg()
+{
+    return mErrMsg;
 }
 
 USBOperationHandler::USBOperationHandler()

@@ -17,6 +17,20 @@
 #include <string>
 #include <memory>
 #include <stdint.h>
+#include "USBErrors.h"
+
+enum USBOperErrors
+{
+    NO_ERROR = 0,
+    UNKNOWN = -1,
+    INVALID_PATH = -2,
+    INVALID_SOURCE_PATH = -3,
+    INVALID_DEST_PATH = -4,
+    FILE_ALREADY_EXISTS = -5,
+    SUCCESS = 100
+};
+
+int getUSBErrorCode(int errorCode);
 
 class USBFolderContent
 {
@@ -43,13 +57,15 @@ private:
     std::string mFullPath;
     std::uint32_t mTotalCount;
     std::vector<std::shared_ptr<USBFolderContent>> mContents;
-	int32_t mStatus;
+    int32_t mStatus;
+    std::string mErrMsg;
     void init();
 public:
     USBFolderContents(std::string);
-	int32_t getStatus() { return mStatus; }
+    int32_t getStatus() { return mStatus; }
     std::string getPath() { return mFullPath; }
     std::uint32_t getTotalCount() { return mTotalCount; }
+    std::string getErrorMsg() { return mErrMsg;}
     std::vector<std::shared_ptr<USBFolderContent>> getContents() { return mContents; }
 };
 
@@ -88,6 +104,8 @@ class USBMove
 private:
     std::string mSrcPath;
     std::string mDestPath;
+    uint32_t mSrcSize;
+    uint32_t mDestSize;
     int32_t mStatus;
     bool mOverwrite;
     std::string mErrMsg;
@@ -101,13 +119,15 @@ public:
 class USBRename
 {
 private:
-	std::string mOldAbsPath;
-	std::string mNewAbsPath;
-	int32_t mStatus;
-	void init();
+    std::string mOldAbsPath;
+    std::string mNewAbsPath;
+    int32_t mStatus;
+    std::string mErrMsg;
+    void init();
 public:
-	USBRename(std::string, std::string);
-	int32_t getStatus();
+    USBRename(std::string, std::string);
+    int32_t getStatus();
+    std::string getErrorMsg();
 };
 
 class USBOperationHandler
