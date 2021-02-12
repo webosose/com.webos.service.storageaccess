@@ -43,7 +43,7 @@ webos_add_compiler_flags(ALL ${PBNJSON_CPP_CFLAGS_OTHER})
 if (USE_PMLOG)
     pkg_check_modules(PMLOGLIB REQUIRED PmLogLib)
     include_directories(${PMLOGLIB_INCLUDE_DIRS})
-    webos_add_compiler_flags(ALL ${PMLOGLIB_CFLAGS_OTHER})
+    webos_add_compiler_flags(ALL ${PMLOGLIB_CFLAGS_OTHER} -DUSE_PMLOG)
 endif()
 
 set(INC_FILES

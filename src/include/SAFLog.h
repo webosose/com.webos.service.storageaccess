@@ -24,7 +24,7 @@
 #define MSGID_LUNA_ERROR_RESPONSE       "LUNA_ERROR_RESPONSE"
 #define MSGID_LUNA_SERVICE_WARNING      "LUNA_SERVICE_WARNING"
 
-//#ifdef USE_PMLOG
+#ifdef USE_PMLOG
 #include <PmLogLib.h>
 
 #define LOG_CRITICAL_SAF(msgid, kvcount, ...)\
@@ -46,7 +46,7 @@ PmLogDebug(getSAFPmLogContext(), ##__VA_ARGS__)
 PMLOG_TRACE(__VA_ARGS__);
 
 extern PmLogContext getSAFPmLogContext();
-/*#else
+#else
 
 #include <stdio.h>
 
@@ -60,16 +60,16 @@ printf("\n")
 printf(__VA_ARGS__);\
 printf("\n")
 
-#define LOG_CRITICAL(msgid, kvcount, ...)\
+#define LOG_CRITICAL_SAF(msgid, kvcount, ...)\
 CONSOLE_LOGS(msgid,kvcount, __VA_ARGS__)
 
-#define LOG_ERROR(msgid, kvcount, ...)\
+#define LOG_ERROR_SAF(msgid, kvcount, ...)\
 CONSOLE_LOGS(msgid, __VA_ARGS__)
 
-#define LOG_WARNING(msgid, kvcount, ...)\
+#define LOG_WARNING_SAF(msgid, kvcount, ...)\
 CONSOLE_LOGS(msgid, __VA_ARGS__)
 
-#define LOG_INFO(msgid, kvcount, ...)\
+#define LOG_INFO_SAF(msgid, kvcount, ...)\
 CONSOLE_LOGS(msgid, __VA_ARGS__)
 
 #define LOG_DEBUG(...)\
@@ -85,7 +85,7 @@ CONSOLE_DEBUG_LOGS(__VA_ARGS__)
 CONSOLE_LOGS(msgid, __VA_ARGS__)
 
 
-#endif*/ /* USE_PMLOG */
+#endif /* USE_PMLOG */
 
 
 #endif /* SRC_UTILS_TTSLOG_H_ */

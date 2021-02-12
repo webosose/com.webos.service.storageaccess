@@ -3,15 +3,7 @@ com.webos.service.storageaccess (SAF)
 
 Summary
 -------
-The storage access framework makes webOS to access the content from
-Internal storage, Attached USB Drives and Cloud Drives.
-
-It and can be extended to any new cloud storages easily.
-Applications can use this framework to access user content via
-a single interface
-
-Any new cloud  services can be easily added  in this framework
-Single point of access to all contents
+SAF is reponsible to access the content from Internal/USB & Cloud Drives
 
 Description
 -----------
