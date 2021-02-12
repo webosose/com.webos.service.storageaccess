@@ -24,15 +24,15 @@ namespace fs = std::filesystem;
 int getInternalErrorCode(int errorCode)
 {
     static std::map<int, int> convMap = {
-        {InternalOperErrors::NO_ERROR, SAFErrors::InternalErrors::InternalErrorEnum::NO_ERROR},
-        {InternalOperErrors::UNKNOWN, SAFErrors::InternalErrors::InternalErrorEnum::UNKNOWN_ERROR},
-        {InternalOperErrors::INVALID_PATH, SAFErrors::InternalErrors::InternalErrorEnum::INVALID_PATH},
-        {InternalOperErrors::INVALID_SOURCE_PATH, SAFErrors::InternalErrors::InternalErrorEnum::INVALID_SOURCE_PATH},
-        {InternalOperErrors::INVALID_DEST_PATH, SAFErrors::InternalErrors::InternalErrorEnum::INVALID_DEST_PATH},
-        {InternalOperErrors::FILE_ALREADY_EXISTS, SAFErrors::InternalErrors::InternalErrorEnum::FILE_ALREADY_EXISTS},
-        {InternalOperErrors::SUCCESS, SAFErrors::InternalErrors::InternalErrorEnum::NO_ERROR},
+        {InternalOperErrors::NO_ERROR, SAFErrors::NO_ERROR},
+        {InternalOperErrors::UNKNOWN, SAFErrors::UNKNOWN_ERROR},
+        {InternalOperErrors::INVALID_PATH, SAFErrors::INVALID_PATH},
+        {InternalOperErrors::INVALID_SOURCE_PATH, SAFErrors::INVALID_SOURCE_PATH},
+        {InternalOperErrors::INVALID_DEST_PATH, SAFErrors::INVALID_DEST_PATH},
+        {InternalOperErrors::FILE_ALREADY_EXISTS, SAFErrors::FILE_ALREADY_EXISTS},
+        {InternalOperErrors::SUCCESS, SAFErrors::NO_ERROR}
     };
-    int retCode = SAFErrors::InternalErrors::InternalErrorEnum::UNKNOWN_ERROR;
+    int retCode = SAFErrors::UNKNOWN_ERROR;
     if (convMap.find(errorCode) != convMap.end())
         retCode = convMap[errorCode];
     return retCode;
@@ -221,7 +221,7 @@ void InternalCopy::init()
                 this->mStatus = SUCCESS;
             }
             catch(fs::filesystem_error& e) {
-                this->mStatus = INVALID_DEST_PATH;
+                this->mStatus = PERMISSION_DENIED;
             }
         });
 }
@@ -255,7 +255,7 @@ void InternalRemove::init()
             mStatus = INVALID_PATH;
     }
     catch(fs::filesystem_error& e) {
-        mStatus = INVALID_PATH;
+        mStatus = PERMISSION_DENIED;
     }
 }
 
@@ -310,13 +310,13 @@ void InternalMove::init()
                     this->mStatus = SUCCESS;
                 }
                 catch(fs::filesystem_error& e) {
-                    this->mStatus = INVALID_DEST_PATH;
+                    this->mStatus = PERMISSION_DENIED;
                 }
             });
         fs::remove_all(mSrcPath);
     }
     catch(fs::filesystem_error& e) {
-        mStatus = UNKNOWN;
+        mStatus = PERMISSION_DENIED;
     }
 }
 
@@ -343,14 +343,15 @@ void InternalRename::init ()
     {
         if (!fs::exists(mOldAbsPath))
         {
-            mStatus = INVALID_SOURCE_PATH;
+            mStatus = INVALID_PATH;
             return;
         }
+        mNewAbsPath = mOldAbsPath.substr(0, mOldAbsPath.rfind("/") + 1) + mNewAbsPath;
         fs::rename(mOldAbsPath, mNewAbsPath);
         mStatus = SUCCESS;
     }
     catch(fs::filesystem_error& e) {
-        mStatus = INVALID_DEST_PATH;
+        mStatus = PERMISSION_DENIED;
     }
 }
 
@@ -371,7 +372,7 @@ void InternalCreateDir::init ()
         mStatus = SUCCESS;
     }
     catch(fs::filesystem_error& e) {
-        mStatus = UNKNOWN;
+        mStatus = PERMISSION_DENIED;
     }
 }
 

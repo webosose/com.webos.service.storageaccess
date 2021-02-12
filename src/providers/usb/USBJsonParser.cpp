@@ -12,7 +12,7 @@
 
 #include "USBJsonParser.h"
 #include <SAFLog.h>
-#include "USBErrors.h"
+#include "SAFErrors.h"
 
 pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
 {
@@ -30,8 +30,8 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
         if(replyObj.hasKey("deviceListInfo") && replyObj["deviceListInfo"].isArray() && replyObj["deviceListInfo"].arraySize() > 1)
         {
             responseObj.put("returnValue", false);
-            responseObj.put("errorCode", USBErrors::MORE_ATTACHED_STORAGES_THAN_USB);
-            responseObj.put("errorText", USBErrors::getUSBErrorString(USBErrors::MORE_ATTACHED_STORAGES_THAN_USB));
+            responseObj.put("errorCode", SAFErrors::USBErrors::MORE_ATTACHED_STORAGES_THAN_USB);
+            responseObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::MORE_ATTACHED_STORAGES_THAN_USB));
         }
         if(replyObj.hasKey("deviceListInfo") && replyObj["deviceListInfo"][0].hasKey("storageDeviceList"))
         {
@@ -59,12 +59,12 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
                         rObj.put("storgaeName", usbArray[i]["storageDriveList"][j]["driveName"]);
                     if(usbArray[i]["storageDriveList"][j].hasKey("uuid"))
                         sid = usbArray[i]["serialNumber"].asString() + "-" + usbArray[i]["storageDriveList"][j]["uuid"].asString();
-                        rObj.put("storageId", sid);
+                        rObj.put("driveId", sid);
                         sid = "";
                     if(usbArray[i]["storageDriveList"][j].hasKey("fsType"))
-                        rObj.put("fsType", usbArray[i]["storageDriveList"][j]["fsType"]);
+                        rObj.put("fileSystem", usbArray[i]["storageDriveList"][j]["fsType"]);
                     if(usbArray[i]["storageDriveList"][j].hasKey("mountName"))
-                        rObj.put("mountPath", usbArray[i]["storageDriveList"][j]["mountName"]);
+                        rObj.put("path", usbArray[i]["storageDriveList"][j]["mountName"]);
                     responseArray.append(rObj);
                 }
             }
@@ -100,7 +100,8 @@ pbnjson::JValue USBPbnJsonParser::ParseGetProperties(pbnjson::JValue rootObj, st
         }
         else if(eachObj.hasKey("isWritable"))
         {
-            respObj.put("isWritable", eachObj["isWritable"].asBool());
+            respObj.put("writable", eachObj["isWritable"].asBool());
+            respObj.put("deletable", eachObj["isWritable"].asBool());
         }
         else if(eachObj.hasKey("spaceInfo"))
         {

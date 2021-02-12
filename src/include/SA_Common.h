@@ -60,6 +60,7 @@ enum class MethodType {
     REMOVE_METHOD,
     EJECT_METHOD,
     RENAME_METHOD,
+    EXTRA_METHOD,
     ATTACH_METHOD,
     AUTHENTICATE_METHOD
 };

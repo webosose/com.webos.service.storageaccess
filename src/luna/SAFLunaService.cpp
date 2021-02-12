@@ -84,7 +84,10 @@ bool SAFLunaService::handleExtraCommand(LSMessage &message)
     LS::Message request(&message);
     pbnjson::JValue requestObj;
     int parseError = 0;
-    const std::string schema = STRICT_SCHEMA(PROPS_4(PROP(storageType, string), PROP(storageId, string), PROP(command, string), OBJECT(commandArgs, OBJSCHEMA_3(PROP(clientId, string), PROP(clientSecret, string), PROP(secretToken, string))))REQUIRED_4(storageType, storageId, command, commandArgs));
+    const std::string schema = STRICT_SCHEMA(PROPS_3(PROP(storageType, string), PROP(driveId, string),
+        OBJECT(operation, OBJSCHEMA_2(PROP(type, string), OBJECT(payload,
+        OBJSCHEMA_3(PROP(clientId, string), PROP(clientSecret, string), PROP(secretToken, string))))))
+        REQUIRED_3(storageType, driveId, operation));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         LOG_DEBUG_SAF("%s, Invalid Json Format Error", __FUNCTION__);
@@ -92,62 +95,10 @@ bool SAFLunaService::handleExtraCommand(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
         return true;
     }
-    pbnjson::JValue args = requestObj["commandArgs"];
-    std::string clientId = "";
-    std::string clientSecret = "";
-    std::string secretToken = "";
-    std::string command = requestObj["command"].asString();
-    LS::SubscriptionPoint* subs = new LS::SubscriptionPoint;
-    subs->setServiceHandle(this);
-    subs->subscribe(request);
-    if("attachCloud" == command)
-    {
-        if(args.hasKey("clientId"))
-            clientId = args["clientId"].asString();
-        if(args.hasKey("clientSecret"))
-            clientSecret = args["clientSecret"].asString();
-        if (clientId.empty() || clientSecret.empty())
-        {
-            const std::string errorStr =
-                SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_PARAM);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::CloudErrors::INVALID_PARAM);
-            return true;
-        }
-        mAuthParam["client_id"] = clientId;
-        mAuthParam["client_secret"] = clientSecret;
-        std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
-        REQUEST_BUILDER(reqData, MethodType::ATTACH_METHOD, requestObj, SAFLunaService::onHandleExtraCommandReply)
-        mDocumentProviderManager->addRequest(reqData);
-    }
-    else if("authenticateCloud" == command)
-    {
-        if(args.hasKey("secretToken"))
-            secretToken = args["secretToken"].asString();
-        if (secretToken.empty())
-        {
-            const std::string errorStr =
-                SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_PARAM);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::CloudErrors::INVALID_PARAM);
-            return true;
-        }
-        if (mAuthParam["client_id"].empty() || mAuthParam["client_secret"].empty())
-        {
-            const std::string errorStr =
-                SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::ATTACH_NOT_DONE);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::CloudErrors::ATTACH_NOT_DONE);
-            return true;
-        }
-        mAuthParam["secret_token"] = secretToken;
-        std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
-        REQUEST_BUILDER(reqData, MethodType::AUTHENTICATE_METHOD, requestObj, SAFLunaService::onHandleExtraCommandReply)
-        mDocumentProviderManager->addRequest(reqData);
-    }
-    else
-    {
-        const std::string errorStr =
-            SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::UNKNOWN_ERROR);
-        LSUtils::respondWithError(request, errorStr, SAFErrors::CloudErrors::UNKNOWN_ERROR);
-    }
+    requestObj.put("storageType", requestObj["storageType"].asString());
+    std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
+    REQUEST_BUILDER(reqData, MethodType::EXTRA_METHOD, requestObj, SAFLunaService::onHandleExtraCommandReply)
+    mDocumentProviderManager->addRequest(reqData);
     return true;
 }
 
@@ -155,6 +106,11 @@ void SAFLunaService::onHandleExtraCommandReply(pbnjson::JValue rootObj, std::sha
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
     // Fill Reply Object from Root Object and send
+    pbnjson::JValue responseObj = pbnjson::Object();
+    responseObj.put("returnValue", rootObj["returnValue"]);
+    pbnjson::JValue responsePayload = pbnjson::Array();
+    responsePayload.append(rootObj["response"]);
+    responseObj.put("responsePayload", responsePayload);
     LSUtils::postToClient(subs->getMessage(), rootObj);
 }
 
@@ -165,7 +121,7 @@ bool SAFLunaService::list(LSMessage &message)
     pbnjson::JValue requestObj;
     std::string payload;
     int parseError = 0;
-    const std::string schema = STRICT_SCHEMA(PROPS_7(PROP(storageType, string),PROP(storageId, string),PROP(path, string),PROP(limit, integer),PROP(offset, integer),PROP(refreshToken, string),PROP_WITH_VAL_1(refresh, boolean, true))REQUIRED_5(storageType,storageId,path,offset,limit));
+    const std::string schema = STRICT_SCHEMA(PROPS_7(PROP(storageType, string),PROP(driveId, string),PROP(path, string),PROP(limit, integer),PROP(offset, integer),PROP(refreshToken, string),PROP_WITH_VAL_1(refresh, boolean, true))REQUIRED_5(storageType,driveId,path,offset,limit));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
@@ -176,11 +132,12 @@ bool SAFLunaService::list(LSMessage &message)
     int limit = -1;
     string storageType = requestObj["storageType"].asString();
     string folderPathString = requestObj["path"].asString();
-    string storageIdStr = requestObj["storageId"].asString();
+    string storageIdStr = requestObj["driveId"].asString();
     LOG_DEBUG_SAF("listFolderContents : Folder Path : %s", folderPathString.c_str());
     requestObj["offset"].asNumber<int>(offset);
     requestObj["limit"].asNumber<int>(limit);
-    if ((storageType.empty()) || (folderPathString.empty()) || (storageIdStr.empty()) || (offset == -1) || (limit == -1))
+    if ((storageType.empty()) || (folderPathString.empty()) || (storageIdStr.empty())
+        || (offset < 1) || (offset > 100) || (limit == -1))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_PARAM);
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
@@ -227,7 +184,8 @@ bool SAFLunaService::getProperties(LSMessage &message)
     pbnjson::JValue requestObj;
     int parseError = 0;
     std::string payload;
-    const std::string schema = STRICT_SCHEMA(PROPS_3(PROP(storageType, string), PROP(storageId, string), PROP(refreshToken, string))REQUIRED_2(storageType,storageId));
+    const std::string schema = STRICT_SCHEMA(PROPS_4(PROP(storageType, string),
+        PROP(driveId, string), PROP(path, string), PROP(refreshToken, string))REQUIRED_2(storageType,driveId));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
@@ -235,8 +193,8 @@ bool SAFLunaService::getProperties(LSMessage &message)
         return true;
     }
     std::string storageType = requestObj["storageType"].asString();
-    std::string storageId = requestObj["storageId"].asString();
-    if ((storageType.empty()) || (storageId.empty()))
+    std::string driveId = requestObj["driveId"].asString();
+    if ((storageType.empty()) || (driveId.empty()))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_PARAM);
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
@@ -271,7 +229,7 @@ void SAFLunaService::onGetPropertiesReply(pbnjson::JValue rootObj, std::shared_p
         else if(type == StorageType::USB)
         {
             USBPbnJsonParser parser;
-            respObj = parser.ParseGetProperties(rootObj, reqObj["storageId"].asString());
+            respObj = parser.ParseGetProperties(rootObj, reqObj["driveId"].asString());
         }
         else
         {
@@ -341,7 +299,7 @@ void SAFLunaService::onListOfStoragesReply(pbnjson::JValue rootObj, std::shared_
         providerRespArray.append(rootObj["response"]);
         pbnjson::JValue responseObj = pbnjson::Object();
         responseObj.put("returnValue", true);
-        responseObj.put("response", providerRespArray);
+        responseObj.put("storageProviders", providerRespArray);
         LSUtils::postToClient(subs->getMessage(), responseObj);
     }
     else
@@ -359,10 +317,10 @@ bool SAFLunaService::copy(LSMessage &message)
     int parseError = 0;
     std::string payload;
     const std::string schema = STRICT_SCHEMA(PROPS_10(PROP(srcStorageType, string),
-        PROP(srcStorageId, string), PROP(destStorageType, string), PROP(destStorageId, string),
+        PROP(srcDriveId, string), PROP(destStorageType, string), PROP(destDriveId, string),
         PROP(srcPath, string), PROP(destPath, string), PROP(srcRefreshToken, string),
         PROP(destRefreshToken, string), PROP(overwrite, boolean), PROP(subscribe, boolean))
-        REQUIRED_6(srcStorageType, srcStorageId, destStorageType, destStorageId, srcPath, destPath));
+        REQUIRED_6(srcStorageType, srcDriveId, destStorageType, destDriveId, srcPath, destPath));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
@@ -370,9 +328,9 @@ bool SAFLunaService::copy(LSMessage &message)
         return true;
     }
     std::string srcType = requestObj["srcStorageType"].asString();
-    std::string srcId = requestObj["srcStorageId"].asString();
+    std::string srcId = requestObj["srcDriveId"].asString();
     std::string desType = requestObj["destStorageType"].asString();
-    std::string desId = requestObj["destStorageId"].asString();
+    std::string desId = requestObj["destDriveId"].asString();
     std::string srcPath = requestObj["srcPath"].asString();
     std::string destPath = requestObj["destPath"].asString();
     if ((srcType.empty()) || (srcId.empty()) || (desType.empty()) || (desId.empty()) || (srcPath.empty()) || (destPath.empty()))
@@ -424,10 +382,10 @@ bool SAFLunaService::move(LSMessage &message)
     int parseError = 0;
     std::string payload;
     const std::string schema = STRICT_SCHEMA(PROPS_10(PROP(srcStorageType, string),
-        PROP(srcStorageId, string), PROP(destStorageType, string), PROP(destStorageId, string),
+        PROP(srcDriveId, string), PROP(destStorageType, string), PROP(destDriveId, string),
         PROP(srcPath, string), PROP(destPath, string), PROP(srcRefreshToken, string),
         PROP(destRefreshToken, string), PROP(overwrite, boolean), PROP(subscribe, boolean))
-        REQUIRED_6(srcStorageType, srcStorageId, destStorageType, destStorageId, srcPath, destPath));
+        REQUIRED_6(srcStorageType, srcDriveId, destStorageType, destDriveId, srcPath, destPath));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
@@ -435,9 +393,9 @@ bool SAFLunaService::move(LSMessage &message)
         return true;
     }
     std::string srcType = requestObj["srcStorageType"].asString();
-    std::string srcId = requestObj["srcStorageId"].asString();
+    std::string srcId = requestObj["srcDriveId"].asString();
     std::string desType = requestObj["destStorageType"].asString();
-    std::string desId = requestObj["destStorageId"].asString();
+    std::string desId = requestObj["destDriveId"].asString();
     std::string srcPath = requestObj["srcPath"].asString();
     std::string destPath = requestObj["destPath"].asString();
     if ((srcType.empty()) || (srcId.empty()) || (desType.empty()) || (desId.empty()) || (srcPath.empty()) || (destPath.empty()))
@@ -488,7 +446,7 @@ bool SAFLunaService::remove(LSMessage &message)
     pbnjson::JValue requestObj;
     int parseError = 0;
     std::string payload;
-    const std::string schema = STRICT_SCHEMA(PROPS_4(PROP(storageType, string), PROP(storageId, string), PROP(path, string), PROP(refreshToken, string))REQUIRED_3(storageType,storageId,path));
+    const std::string schema = STRICT_SCHEMA(PROPS_4(PROP(storageType, string), PROP(driveId, string), PROP(path, string), PROP(refreshToken, string))REQUIRED_3(storageType,driveId,path));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
@@ -497,7 +455,7 @@ bool SAFLunaService::remove(LSMessage &message)
     }
     std::string storageTypeString = requestObj["storageType"].asString();
     std::string folderpathString = requestObj["path"].asString();
-    std::string storageIdString = requestObj["storageId"].asString();
+    std::string storageIdString = requestObj["driveId"].asString();
 
     if ((storageTypeString.empty()) || (storageIdString.empty()) || (folderpathString.empty()))
     {
@@ -545,7 +503,8 @@ bool SAFLunaService::eject(LSMessage &message)
     LS::Message request(&message);
     pbnjson::JValue requestObj;
     int parseError = 0;
-    const std::string schema = STRICT_SCHEMA(PROPS_1(PROP(storageId, string))REQUIRED_1(storageId));
+    const std::string schema = STRICT_SCHEMA(PROPS_2(PROP(storageType, string),
+        PROP(driveId, string))REQUIRED_2(storageType, driveId));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
@@ -553,15 +512,13 @@ bool SAFLunaService::eject(LSMessage &message)
         return true;
     }
 
-    std::string storageIdString = requestObj["storageId"].asString();
-    if (storageIdString.empty())
+    if (requestObj["storageType"].asString().empty() || requestObj["driveId"].asString().empty())
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_PARAM);
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
 
-    requestObj.put("storageType","USB"); //for USB storageType
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
     REQUEST_BUILDER(reqData, MethodType::EJECT_METHOD, requestObj, SAFLunaService::onEjectReply)
     mDocumentProviderManager->addRequest(reqData);
@@ -584,6 +541,10 @@ void SAFLunaService::onEjectReply(pbnjson::JValue rootObj, std::shared_ptr<LSUti
             USBPbnJsonParser parser;
             respObj = parser.ParseEject(rootObj);
         }
+        else if (type == StorageType::GDRIVE)
+        {
+            respObj.put("returnValue", true);
+        }
         else
         {
             respObj.put("returnValue", false);
@@ -599,7 +560,7 @@ bool SAFLunaService::rename(LSMessage &message)
     pbnjson::JValue requestObj;
     int parseError = 0;
     std::string payload;
-    const std::string schema = STRICT_SCHEMA(PROPS_4(PROP(storageType, string), PROP(storageId, string), PROP(path, string), PROP(newName, string))REQUIRED_4(storageType,storageId,path,newName));
+    const std::string schema = STRICT_SCHEMA(PROPS_4(PROP(storageType, string), PROP(driveId, string), PROP(path, string), PROP(newName, string))REQUIRED_4(storageType,driveId,path,newName));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_JSON_FORMAT);
@@ -607,10 +568,10 @@ bool SAFLunaService::rename(LSMessage &message)
         return true;
     }
     std::string storageType = requestObj["storageType"].asString();
-    std::string storageId = requestObj["storageId"].asString();
+    std::string driveId = requestObj["driveId"].asString();
     std::string path = requestObj["path"].asString();
     std::string newName = requestObj["newName"].asString();
-    if (storageId.empty() || storageId.empty() || storageId.empty() || storageId.empty())
+    if (storageType.empty() || driveId.empty() || path.empty() || newName.empty())
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_PARAM);
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);

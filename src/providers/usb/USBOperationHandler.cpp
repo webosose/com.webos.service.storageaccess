@@ -23,16 +23,17 @@ namespace fs = std::filesystem;
 int getUSBErrorCode(int errorCode)
 {
     static std::map<int, int> convMap = {
-        {USBOperErrors::NO_ERROR,              USBErrors::USBErrors::ERROR_NONE},
-        {USBOperErrors::UNKNOWN,               USBErrors::USBErrors::USB_UNKNOWN_ERROR},
-        {USBOperErrors::INVALID_PATH,          USBErrors::USBErrors::INVALID_PATH},
-        {USBOperErrors::INVALID_SOURCE_PATH,   USBErrors::USBErrors::INVALID_SOURCE_PATH},
-        {USBOperErrors::INVALID_DEST_PATH,     USBErrors::USBErrors::INVALID_DEST_PATH},
-        {USBOperErrors::FILE_ALREADY_EXISTS,   USBErrors::USBErrors::FILE_ALREADY_EXISTS},
-        {USBOperErrors::SUCCESS,               USBErrors::USBErrors::ERROR_NONE},
+        {USBOperErrors::NO_ERROR,              SAFErrors::ERROR_NONE},
+        {USBOperErrors::UNKNOWN,               SAFErrors::UNKNOWN_ERROR},
+        {USBOperErrors::INVALID_PATH,          SAFErrors::INVALID_PATH},
+        {USBOperErrors::INVALID_SOURCE_PATH,   SAFErrors::INVALID_SOURCE_PATH},
+        {USBOperErrors::INVALID_DEST_PATH,     SAFErrors::INVALID_DEST_PATH},
+        {USBOperErrors::FILE_ALREADY_EXISTS,   SAFErrors::FILE_ALREADY_EXISTS},
+        {USBOperErrors::PERMISSION_DENIED,     SAFErrors::PERMISSION_DENIED},
+        {USBOperErrors::SUCCESS,               SAFErrors::ERROR_NONE},
     };
 
-    int retCode = USBErrors::USBErrors::USB_UNKNOWN_ERROR;
+    int retCode = SAFErrors::UNKNOWN_ERROR;
     if (convMap.find(errorCode) != convMap.end())
         retCode = convMap[errorCode];
     return retCode;

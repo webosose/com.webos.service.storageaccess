@@ -27,6 +27,7 @@ enum InternalOperErrors
 	INVALID_SOURCE_PATH = -3,
 	INVALID_DEST_PATH = -4,
 	FILE_ALREADY_EXISTS = -5,
+	PERMISSION_DENIED = -6,
 	SUCCESS = 100
 };
 int getInternalErrorCode(int errorCode);

@@ -17,7 +17,7 @@
 #include <string>
 #include <memory>
 #include <stdint.h>
-#include "USBErrors.h"
+#include "SAFErrors.h"
 
 enum USBOperErrors
 {
@@ -27,6 +27,7 @@ enum USBOperErrors
     INVALID_SOURCE_PATH = -3,
     INVALID_DEST_PATH = -4,
     FILE_ALREADY_EXISTS = -5,
+    PERMISSION_DENIED = -6,
     SUCCESS = 100
 };
 

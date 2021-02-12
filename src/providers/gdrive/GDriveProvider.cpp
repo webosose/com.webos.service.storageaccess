@@ -18,8 +18,7 @@
 #include "gdrive/gdrive.hpp"
 #include "InternalOperationHandler.h"
 
-GDriveProvider::GDriveProvider() : mQuit(false),
-    mCred(nullptr), mUser("usetest360@gmail.com")
+GDriveProvider::GDriveProvider() : mQuit(false), mCred(nullptr)
 {
     LOG_DEBUG_SAF(" GDriveProvider::GDriveProvider : Constructor Created");
     mDispatcherThread = std::thread(std::bind(&GDriveProvider::dispatchHandler, this));
@@ -43,6 +42,53 @@ void GDriveProvider::setErrorMessage(shared_ptr<ValuePairMap> valueMap, string e
     valueMap->emplace("returnValue", pair<string, DataType>("false", DataType::BOOLEAN));
 }
 
+bool GDriveProvider::validateExtraCommand(std::vector<std::string> extraParams, std::shared_ptr<RequestData> reqData)
+{
+    pbnjson::JValue payload = reqData->params["operation"]["payload"];
+    for (auto paramName : extraParams)
+    {
+        if (!payload.hasKey(paramName) || payload[paramName].asString().empty())
+            return false;
+    }
+    return true;
+}
+
+void GDriveProvider::extraMethod(std::shared_ptr<RequestData> reqData)
+{
+    LOG_DEBUG_SAF("%s", __FUNCTION__);
+    pbnjson::JValue operation = reqData->params["operation"];
+    std::string type = operation["type"].asString();
+    pbnjson::JValue respObj = pbnjson::Object();
+    std::vector<std::string> validCtx;
+    if ((type == "login") && validateExtraCommand({"clientId", "clientSecret"}, reqData))
+    {
+        attachCloud(reqData);
+    }
+    else if ((type == "authenticate") && validateExtraCommand({"secretToken"}, reqData))
+    {
+        authenticateCloud(reqData);
+    }
+    else if ((type == "token") && validateExtraCommand({"clientId", "clientSecret", "refreshToken"}, reqData))
+    {
+        mAuthParam["client_id"] = reqData->params["operation"]["payload"]["clientId"].asString();
+        mAuthParam["client_secret"] = reqData->params["operation"]["payload"]["clientSecret"].asString();
+        mAuthParam["refresh_token"] = reqData->params["operation"]["payload"]["refreshToken"].asString();
+        while (mCred.use_count() != 0)
+            mCred.reset();
+        mCred = std::shared_ptr<Credential>(new Credential(&mAuthParam));
+        respObj.put("returnValue", true);
+        reqData->cb(respObj, reqData->subs);
+        mGDriveOperObj.loadFileIds(mCred);
+    }
+    else
+    {
+        respObj.put("returnValue", false);
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_PARAM));
+        reqData->cb(respObj, reqData->subs);
+    }
+}
+
 void GDriveProvider::attachCloud(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
@@ -50,8 +96,9 @@ void GDriveProvider::attachCloud(std::shared_ptr<RequestData> reqData)
     std::string authURL;
     if (mAuthParam["refresh_token"].empty())
     {
-        mAuthParam["client_id"] = reqData->params["commandArgs"]["clientId"].asString();
-        mAuthParam["client_secret"] = reqData->params["commandArgs"]["clientSecret"].asString();
+        mAuthParam["client_id"] = reqData->params["operation"]["payload"]["clientId"].asString();
+        mAuthParam["client_secret"] = reqData->params["operation"]["payload"]["clientSecret"].asString();
+        mUser = mAuthParam["client_secret"];
         OAuth oauth(mAuthParam["client_id"], mAuthParam["client_secret"]);
         authURL = oauth.get_authorize_url();
         LOG_DEBUG_SAF("attachCloud :client_id = [ %s ]   client_secret = [ %s ]", mAuthParam["client_id"].c_str(), mAuthParam["client_secret"].c_str());
@@ -74,9 +121,15 @@ void GDriveProvider::attachCloud(std::shared_ptr<RequestData> reqData)
     }
     else
     {
+        pbnjson::JValue responsePayObjArr = pbnjson::Array();
+        pbnjson::JValue responsePayObj = pbnjson::Object();
+        pbnjson::JValue payloadObj = pbnjson::Object();
+        payloadObj.put("response", authURL);
+        responsePayObj.put("type", reqData->params["operation"]["type"].asString());
+        responsePayObj.put("paylod", payloadObj);
+        responsePayObjArr.append(responsePayObj);
         respObj.put("returnValue", true);
-        respObj.put("authURL", authURL);
-        LOG_DEBUG_SAF("========> authorize_url:%s", authURL.c_str());
+        respObj.put("responsePayload", responsePayObjArr);
     }
     reqData->cb(respObj, reqData->subs);
 }
@@ -85,7 +138,7 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
-    mAuthParam["access_token"] = reqData->params["commandArgs"]["secretToken"].asString();
+    mAuthParam["access_token"] = reqData->params["operation"]["payload"]["secretToken"].asString();
     LOG_DEBUG_SAF("authenticateCloud :client_id = [ %s ]   client_secret = [ %s ]   secret_token = [ %s ]", mAuthParam["client_id"].c_str(),
         mAuthParam["client_secret"].c_str(), mAuthParam["access_token"].c_str());
     while (mCred.use_count() != 0)
@@ -98,8 +151,15 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
     if (!mAuthParam["access_token"].empty()
         && oauth.build_credential(mAuthParam["access_token"], *(mCred.get())))
     {
+        pbnjson::JValue responsePayObjArr = pbnjson::Array();
+        pbnjson::JValue responsePayObj = pbnjson::Object();
+        pbnjson::JValue payloadObj = pbnjson::Object();
+        payloadObj.put("response", mAuthParam["refresh_token"]);
+        responsePayObj.put("type", reqData->params["operation"]["type"].asString());
+        responsePayObj.put("paylod", payloadObj);
+        responsePayObjArr.append(responsePayObj);
         respObj.put("returnValue", true);
-        respObj.put("refreshToken", mAuthParam["refresh_token"]);
+        respObj.put("responsePayload", responsePayObjArr);
     }
     else
     {
@@ -169,15 +229,15 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
             contentsObj.append(contentObj);
         }
         respObj.put("returnValue", true);
-        respObj.put("contents", contentsObj);
+        respObj.put("files", contentsObj);
         respObj.put("fullPath", path);
         respObj.put("totalCount", contentsObj.arraySize());
     }
     else
     {
         respObj.put("returnValue", false);
-        respObj.put("errorCode", SAFErrors::CloudErrors::INVALID_PATH);
-        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_PATH));
+        respObj.put("errorCode", SAFErrors::INVALID_PATH);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_PATH));
     }
     reqData->cb(respObj, reqData->subs);
 }
@@ -194,9 +254,14 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-
+    std::string path = "root";
+    if (reqData->params.hasKey("path"))
+    {
+        path = reqData->params["path"].asString();
+        path = mGDriveOperObj.getFileId(path);
+    }
     Drive service(mCred.get());
-    FileGetRequest get = service.files().Get("root");
+    FileGetRequest get = service.files().Get(path);
     get.add_field("userPermission");
     GFile file = get.execute();
     mUser = file.get_userPermission().get_emailAddress();
@@ -210,11 +275,12 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
     respObj.put("returnValue", true);
     respObj.put("storageType", "CLOUD");
     respObj.put("writable", true);
-    respObj.put("deletable", false);
-    //respObj.put("userName", username);
-    //respObj.put("user", mUser);
-    respObj.put("totalSpace", totalspace / 1000000);
-    respObj.put("freeSpace", freespace / 1000000);
+    respObj.put("deletable", true);
+    if (path == "root")
+    {
+        respObj.put("totalSpace", totalspace / 1000000);
+        respObj.put("freeSpace", freespace / 1000000);
+    }
     reqData->cb(respObj, reqData->subs);
 }
 
@@ -260,12 +326,13 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
                 movedFile->set_parents(vec);
                 service.files().Copy(srcFileID, movedFile).execute();
                 respObj.put("returnValue", true);
+                respObj.put("progress", 100);
             }
             else
             {
                 respObj.put("returnValue", false);
-                respObj.put("errorCode", SAFErrors::CloudErrors::INVALID_SOURCE_PATH);
-                respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_SOURCE_PATH));
+                respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
+                respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_SOURCE_PATH));
             }
         }
         else
@@ -284,8 +351,8 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
             if (!fin.good())
             {
                 respObj.put("returnValue", false);
-                respObj.put("errorCode", SAFErrors::CloudErrors::UNKNOWN_ERROR);
-                respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::UNKNOWN_ERROR));
+                respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
+                respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::UNKNOWN_ERROR));
                 reqData->cb(respObj, reqData->subs);
                 return;
             }
@@ -306,7 +373,7 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
             service.files().Insert(&insertFile, &fc).execute();
             fin.close();
             respObj.put("returnValue", true);
-            respObj.put("status", "File Copied");
+            respObj.put("progress", 100);
         }
     }
     else
@@ -323,15 +390,15 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
         ofstream fout(destPath.c_str(), std::ios::binary);
         if(!fout.good()) {
             respObj.put("returnValue", false);
-            respObj.put("errorCode", SAFErrors::CloudErrors::UNKNOWN_ERROR);
-            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::UNKNOWN_ERROR));
+            respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
+            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::UNKNOWN_ERROR));
             reqData->cb(respObj, reqData->subs);
             return;
         }
         fout.write(resp.content().c_str(), resp.content().size());
         fout.close();
         respObj.put("returnValue", true);
-        respObj.put("status", "File Copied");
+        respObj.put("progress", 100);
     }
     reqData->cb(respObj, reqData->subs);
     mGDriveOperObj.loadFileIds(mCred);
@@ -381,13 +448,13 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
                 service.files().Copy(srcFileID, movedFile).execute();
                 service.files().Delete(srcFileID).execute();
                 respObj.put("returnValue", true);
-                respObj.put("status", "File Moved");
+                respObj.put("progress", 100);
             }
             else
             {
                 respObj.put("returnValue", false);
-                respObj.put("errorCode", SAFErrors::CloudErrors::INVALID_SOURCE_PATH);
-                respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_SOURCE_PATH));
+                respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
+                respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_SOURCE_PATH));
             }
         }
         else
@@ -405,8 +472,8 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
             if (!fin.good())
             {
                 respObj.put("returnValue", false);
-                respObj.put("errorCode", SAFErrors::CloudErrors::UNKNOWN_ERROR);
-                respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::UNKNOWN_ERROR));
+                respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
+                respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::UNKNOWN_ERROR));
                 reqData->cb(respObj, reqData->subs);
                 return;
             }
@@ -426,7 +493,7 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
             service.files().Insert(&insertFile, &fc).execute();
             fin.close();
             respObj.put("returnValue", true);
-            respObj.put("status", "File Moved");
+            respObj.put("progress", 100);
             auto intObj = InternalRemove(srcPath);
             (void)intObj;
         }
@@ -445,8 +512,8 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
         ofstream fout(destPath.c_str(), std::ios::binary);
         if(!fout.good()) {
             respObj.put("returnValue", false);
-            respObj.put("errorCode", SAFErrors::CloudErrors::UNKNOWN_ERROR);
-            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::UNKNOWN_ERROR));
+            respObj.put("errorCode", SAFErrors::UNKNOWN_ERROR);
+            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::UNKNOWN_ERROR));
             reqData->cb(respObj, reqData->subs);
             return;
         }
@@ -454,7 +521,7 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
         fout.close();
         service.files().Delete(srcFileID).execute();
         respObj.put("returnValue", true);
-        respObj.put("status", "File Moved");
+        respObj.put("progress", 100);
     }
     reqData->cb(respObj, reqData->subs);
     mGDriveOperObj.loadFileIds(mCred);
@@ -487,8 +554,8 @@ void GDriveProvider::remove(std::shared_ptr<RequestData> reqData)
     else
     {
         respObj.put("returnValue", false);
-        respObj.put("errorCode", SAFErrors::CloudErrors::INVALID_PATH);
-        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_PATH));
+        respObj.put("errorCode", SAFErrors::INVALID_PATH);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_PATH));
     }
     reqData->cb(respObj, reqData->subs);
     mGDriveOperObj.loadFileIds(mCred);
@@ -498,6 +565,15 @@ void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
+    if (mAuthParam["refresh_token"].empty())
+    {
+        LOG_DEBUG_SAF("===> Authentication Not Done");
+        respObj.put("returnValue", false);
+        respObj.put("errorCode", SAFErrors::CloudErrors::AUTHENTICATION_NOT_DONE);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::AUTHENTICATION_NOT_DONE));
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     std::string fileId = mGDriveOperObj.getFileId(reqData->params["path"].asString());
     if (!fileId.empty())
     {
@@ -511,8 +587,8 @@ void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
     else
     {
         respObj.put("returnValue", false);
-        respObj.put("errorCode", SAFErrors::CloudErrors::INVALID_PATH);
-        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_PATH));
+        respObj.put("errorCode", SAFErrors::INVALID_PATH);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_PATH));
     }
     reqData->cb(respObj, reqData->subs);
     mGDriveOperObj.loadFileIds(mCred);
@@ -524,11 +600,20 @@ void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
     pbnjson::JValue respObj = pbnjson::Object();
     pbnjson::JValue gdriveResArr = pbnjson::Array();
     pbnjson::JValue gdriveRes = pbnjson::Object();
-    gdriveRes.put("storgaeType", "GDRIVE");
-    gdriveRes.put("storgaeId", mUser);
+    gdriveRes.put("storageName", "GDRIVE");
+    gdriveRes.put("driverId", mUser);
+    gdriveRes.put("path", "/");
     gdriveResArr.append(gdriveRes);
     respObj.put("CLOUD", gdriveResArr);
     reqData->params.put("response", respObj);
+    reqData->cb(reqData->params, std::move(reqData->subs));
+}
+
+void GDriveProvider::eject(std::shared_ptr<RequestData> reqData)
+{
+    LOG_DEBUG_SAF("%s", __FUNCTION__);
+    pbnjson::JValue respObj = pbnjson::Object();
+    respObj.put("returnValue", true);
     reqData->cb(reqData->params, std::move(reqData->subs));
 }
 
@@ -671,17 +756,10 @@ void GDriveProvider::handleRequests(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     switch(reqData->methodType)
     {
-        case MethodType::ATTACH_METHOD:
+        case MethodType::EXTRA_METHOD:
         {
-            LOG_DEBUG_SAF("%s : MethodType::ATTACH_METHOD", __FUNCTION__);
-            auto fut = std::async(std::launch::async, [this, reqData]() { return this->attachCloud(reqData); });
-            (void)fut;
-        }
-        break;
-        case MethodType::AUTHENTICATE_METHOD:
-        {
-            LOG_DEBUG_SAF("%s : MethodType::AUTHENTICATE_METHOD", __FUNCTION__);
-            auto fut = std::async(std::launch::async, [this, reqData]() { return this->authenticateCloud(reqData); });
+            LOG_DEBUG_SAF("%s : MethodType::EXTRA_METHOD", __FUNCTION__);
+            auto fut = std::async(std::launch::async, [this, reqData]() { return this->extraMethod(reqData); });
             (void)fut;
         }
         break;
@@ -731,6 +809,13 @@ void GDriveProvider::handleRequests(std::shared_ptr<RequestData> reqData)
         {
             LOG_DEBUG_SAF("%s : MethodType::LIST_STORAGES_METHOD", __FUNCTION__);
             auto fut = std::async(std::launch::async, [this, reqData]() { return this->listStoragesMethod(reqData); });
+            (void)fut;
+        }
+        break;
+        case MethodType::EJECT_METHOD:
+        {
+            LOG_DEBUG_SAF("%s : MethodType::EJECT_METHOD", __FUNCTION__);
+            auto fut = std::async(std::launch::async, [this, reqData]() { return this->eject(reqData); });
             (void)fut;
         }
         break;

@@ -18,6 +18,7 @@ void GDriveOperation::loadFileIds(std::shared_ptr<Credential> cred)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
     mFileIds.clear();
+    mFileIds["/"] = "root";
     std::shared_ptr<Drive> service = std::shared_ptr<Drive>(new Drive(cred.get()));
     getChildren("root", service, "/");
     while (service.use_count() != 0)

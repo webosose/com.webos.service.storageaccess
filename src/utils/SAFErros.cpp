@@ -52,3 +52,14 @@ std::string SAFErrors::CloudErrors::getCloudErrorString(int errorCode)
     return errorText;
 }
 
+std::string SAFErrors::USBErrors::getUSBErrorString(int errorCode)
+{
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+
+    std::string errorText = "Unknown Error";
+    if (mUSBErrorTextTable.find(errorCode) != mUSBErrorTextTable.end()) {
+        errorText = mUSBErrorTextTable[errorCode];
+    }
+    return errorText;
+}
+

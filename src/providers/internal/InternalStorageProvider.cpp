@@ -70,7 +70,7 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
     respObj.put("returnValue", status);
     if (status)
     {
-        respObj.put("contents", contenResArr);
+        respObj.put("files", contenResArr);
         respObj.put("totalCount", totalCount);
         respObj.put("fullPath", fullPath);
     }
@@ -87,10 +87,23 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
 void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
-    std::string path = DEFAULT_INTERNAL_PATH;
+    std::string path;
+    pbnjson::JValue respObj = pbnjson::Object();
+    if (reqData->params.hasKey("path"))
+        path = reqData->params["path"].asString();
+    if (path.empty())
+        path = DEFAULT_INTERNAL_PATH;
+    auto pos = path.find(DEFAULT_INTERNAL_PATH);
+    if ((pos == std::string::npos) || (pos != 0))
+    {
+        auto errorCode = SAFErrors::SAFErrors::INVALID_PATH;
+        auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
+        respObj.put("errorCode", errorCode);
+        respObj.put("errorText", errorStr);
+        return;
+    }
     std::unique_ptr<InternalSpaceInfo> propPtr = InternalOperationHandler::getInstance().getProperties(path);
     bool status = (propPtr->getStatus() < 0)?(false):(true);
-    pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", status);
     if (status)
     {
@@ -98,8 +111,11 @@ void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData
             respObj.put("storageType", reqData->params["storageType"].asString());
         respObj.put("writable", propPtr->getIsWritable());
         respObj.put("deletable", propPtr->getIsDeletable());
-        respObj.put("totalSpace(MB)", int(propPtr->getCapacityMB()));
-        respObj.put("freeSpace(MB)", int(propPtr->getFreeSpaceMB()));
+        if (path == DEFAULT_INTERNAL_PATH)
+        {
+            respObj.put("totalSpace", int(propPtr->getCapacityMB()));
+            respObj.put("freeSpace", int(propPtr->getFreeSpaceMB()));
+        }
     }
     else
     {
@@ -133,7 +149,7 @@ void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", status);
         if (status)
         {
-            respObj.put("status(%)", retStatus);
+            respObj.put("progress", retStatus);
         }
         else
         {
@@ -174,7 +190,7 @@ void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", status);
         if (status)
         {
-            respObj.put("status(%)", retStatus);
+            respObj.put("progress", retStatus);
         }
         else
         {
@@ -234,9 +250,8 @@ void InternalStorageProvider::eject(std::shared_ptr<RequestData> reqData)
 {
     pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", false);
-    respObj.put("errorCode", SAFErrors::InternalErrors::InternalErrorEnum::UNKNOWN_ERROR);
-    respObj.put("errorText", SAFErrors::InternalErrors::getInternalErrorString
-        (SAFErrors::InternalErrors::InternalErrorEnum::UNKNOWN_ERROR));
+    respObj.put("errorCode", SAFErrors::SAFErrors::UNKNOWN_ERROR);
+    respObj.put("errorText", SAFErrors::InternalErrors::getInternalErrorString(SAFErrors::SAFErrors::UNKNOWN_ERROR));
     reqData->cb(respObj, reqData->subs);
 }
 
@@ -244,12 +259,13 @@ void InternalStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> re
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
-    pbnjson::JValue gdriveResArr = pbnjson::Array();
-    pbnjson::JValue gdriveRes = pbnjson::Object();
-    gdriveRes.put("storgaeType", "INTERNAL");
-    gdriveRes.put("storgaeId", DEFAULT_INTERNAL_STORAGE_ID);
-    gdriveResArr.append(gdriveRes);
-    respObj.put("INTERNAL", gdriveResArr);
+    pbnjson::JValue internalResArr = pbnjson::Array();
+    pbnjson::JValue internalRes = pbnjson::Object();
+    internalRes.put("storageName", "INTERNAL");
+    internalRes.put("driverId", DEFAULT_INTERNAL_STORAGE_ID);
+    internalRes.put("path", DEFAULT_INTERNAL_PATH);
+    internalResArr.append(internalRes);
+    respObj.put("INTERNAL", internalResArr);
     reqData->params.put("response", respObj);
     reqData->cb(reqData->params, std::move(reqData->subs));
     return;

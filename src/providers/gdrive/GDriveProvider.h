@@ -49,6 +49,8 @@ public:
     void move(std::shared_ptr<RequestData> reqData);
     void rename(std::shared_ptr<RequestData> reqData);
     void listStoragesMethod(std::shared_ptr<RequestData> reqData);
+	void extraMethod(std::shared_ptr<RequestData> reqData);
+	void eject(std::shared_ptr<RequestData> reqData);
 
 private:
     void getFilesFromPath(vector<string> &, const string&);
@@ -59,7 +61,7 @@ private:
     void insertMimeTypes();
     string getMimeType(string);
     void setErrorMessage(shared_ptr<ValuePairMap>, string);
-
+	bool validateExtraCommand(std::vector<std::string>, std::shared_ptr<RequestData>);
     map<string, string> mimetypesMap;
     std::vector<std::shared_ptr<RequestData>> mQueue;
     std::thread mDispatcherThread;
@@ -72,6 +74,8 @@ private:
     AuthParam mAuthParam;
     std::shared_ptr<Credential> mCred;
     std::string mUser;
+	std::string mClientId;
+    std::string mClientSecret;
 };
 
 #endif /* _GDRIVE_PROVIDER_H_ */
