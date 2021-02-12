@@ -327,6 +327,59 @@ std::string USBRename::getErrorMsg()
     return mErrMsg;
 }
 
+USBSpaceInfo::USBSpaceInfo(std::string path) : mPath(path), mStatus(NO_ERROR)
+{
+    init();
+}
+
+void USBSpaceInfo::init()
+{
+    try{
+        fs::space_info dev = fs::space(mPath);
+        mCapacity = dev.capacity;
+        mFreeSpace = dev.free;
+        mAvailSpace = dev.available;
+
+        fs::perms ps = fs::status(mPath).permissions();
+        mIsWritable = ((ps & fs::perms::owner_write) != fs::perms::none);
+        mIsDeletable = ((ps & fs::perms::group_write) != fs::perms::none);
+        mStatus = SUCCESS;
+    }
+    catch(fs::filesystem_error& e) {
+        mStatus = INVALID_PATH;
+    }
+}
+
+std::uint32_t USBSpaceInfo::getCapacityMB()
+{
+    return mCapacity / 1000000;
+}
+
+std::uint32_t USBSpaceInfo::getFreeSpaceMB()
+{
+    return mFreeSpace / 1000000;
+}
+
+std::uint32_t USBSpaceInfo::getAvailSpaceMB()
+{
+    return mAvailSpace / 1000000;
+}
+
+bool USBSpaceInfo::getIsWritable()
+{
+    return mIsWritable;
+}
+
+bool USBSpaceInfo::getIsDeletable()
+{
+    return mIsDeletable;
+}
+
+int32_t USBSpaceInfo::getStatus()
+{
+    return mStatus;
+}
+
 USBOperationHandler::USBOperationHandler()
 {
 }
@@ -364,5 +417,11 @@ std::unique_ptr<USBFolderContents> USBOperationHandler::getListFolderContents(st
 std::unique_ptr<USBRename> USBOperationHandler::rename(std::string oldPath, std::string newPath)
 {
     std::unique_ptr<USBRename> obj = std::unique_ptr<USBRename>(new USBRename(oldPath, newPath));
+    return std::move(obj);
+}
+
+std::unique_ptr<USBSpaceInfo> USBOperationHandler::getProperties(std::string path)
+{
+    std::unique_ptr<USBSpaceInfo> obj = std::unique_ptr<USBSpaceInfo>( new USBSpaceInfo(path));
     return std::move(obj);
 }

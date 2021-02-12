@@ -228,8 +228,15 @@ void SAFLunaService::onGetPropertiesReply(pbnjson::JValue rootObj, std::shared_p
         }
         else if(type == StorageType::USB)
         {
-            USBPbnJsonParser parser;
-            respObj = parser.ParseGetProperties(rootObj, reqObj["driveId"].asString());
+            if(reqObj.hasKey("path"))
+            {
+                respObj = rootObj;
+            }
+            else
+            {
+                USBPbnJsonParser parser;
+                respObj = parser.ParseGetProperties(rootObj, reqObj["driveId"].asString());
+            }
         }
         else
         {

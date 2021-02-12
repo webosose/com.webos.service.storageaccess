@@ -131,6 +131,27 @@ public:
     std::string getErrorMsg();
 };
 
+class USBSpaceInfo
+{
+private:
+    std::string mPath;
+    std::uint32_t mCapacity;
+    std::uint32_t mFreeSpace;
+    std::uint32_t mAvailSpace;
+    bool mIsWritable;
+    bool mIsDeletable;
+    int32_t mStatus;
+    void init();
+public:
+    USBSpaceInfo(std::string);
+    std::uint32_t getCapacityMB();
+    std::uint32_t getFreeSpaceMB();
+    std::uint32_t getAvailSpaceMB();
+    bool getIsWritable();
+    bool getIsDeletable();
+    int32_t getStatus();
+};
+
 class USBOperationHandler
 {
 private:
@@ -142,6 +163,7 @@ public:
     std::unique_ptr<USBMove> move(std::string, std::string, bool);
     std::unique_ptr<USBFolderContents> getListFolderContents(std::string);
     std::unique_ptr<USBRename> rename(std::string,  std::string);
+    std::unique_ptr<USBSpaceInfo> getProperties(std::string path = std::string());
 };
 #endif /*_USB_OPERATION_HANDLER_H_*/
 

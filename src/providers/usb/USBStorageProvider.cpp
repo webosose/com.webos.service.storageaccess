@@ -45,14 +45,13 @@ USBStorageProvider::~USBStorageProvider()
 void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
-    std::string devDriveName = getDriveName(data->params["driveId"].asString());
-    printUSBInfo();
     LSError lserror;
     (void)LSErrorInit(&lserror);
     ReqContext *ctxPtr = new ReqContext();
     ctxPtr->ctx = this;
     ctxPtr->reqData = std::move(data);
 
+    std::string devDriveName = getDriveName(ctxPtr->reqData->params["driveId"].asString());
     if(devDriveName.compare("UUID") == 0)
     {
         pbnjson::JValue errObj = pbnjson::Object();
@@ -83,22 +82,48 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
 
     pbnjson::JValue nextReqArray = pbnjson::Array();
 
-    pbnjson::JValue nextObj = pbnjson::Object();
-    std::string uri = SAF_USB_WRITE_Q_METHOD;
-    std::string payload = "{\"driveName\": \"" + devDriveName + "\"}";
-    nextObj.put("uri", uri);
-    nextObj.put("payload", payload);
+    if(ctxPtr->reqData->params.hasKey("path"))
+    {
+        pbnjson::JValue respObj = pbnjson::Object();
+        std::unique_ptr<USBSpaceInfo> propPtr = USBOperationHandler::getInstance().getProperties(ctxPtr->reqData->params["path"].asString());
+        bool status = (propPtr->getStatus() < 0)?(false):(true);
+        respObj.put("returnValue", status);
+        if (status)
+        {
+            if (ctxPtr->reqData->params.hasKey("storageType"))
+                respObj.put("storageType", ctxPtr->reqData->params["storageType"].asString());
 
-    //append space related luna call
-    pbnjson::JValue spaceObj = pbnjson::Object();
-    std::string spaceUri = SAF_USB_SPACE_METHOD;
-    std::string spacePayload = "{\"driveName\": \"" + devDriveName + "\"}";
-    spaceObj.put("uri", spaceUri);
-    spaceObj.put("payload", spacePayload);
-    nextReqArray.append(spaceObj);
+            respObj.put("writable", propPtr->getIsWritable());
+            respObj.put("deletable", propPtr->getIsDeletable());
+        }
+        else
+        {
+            auto errorCode = getUSBErrorCode(propPtr->getStatus());
+            auto errorStr = SAFErrors::USBErrors::getUSBErrorString(errorCode);
+            respObj.put("errorCode", errorCode);
+            respObj.put("errorText", errorStr);
+        }
+        ctxPtr->reqData->cb(respObj, ctxPtr->reqData->subs);
+        return;
+    }
+    else
+    {
+        pbnjson::JValue nextObj = pbnjson::Object();
+        std::string uri = SAF_USB_WRITE_Q_METHOD;
+        std::string payload = "{\"driveName\": \"" + devDriveName + "\"}";
+        nextObj.put("uri", uri);
+        nextObj.put("payload", payload);
 
-    ctxPtr->reqData->params.put("nextReq", nextReqArray);
-    LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),USBStorageProvider::onGetPropertiesReply, ctxPtr, NULL, &lserror);
+        pbnjson::JValue spaceObj = pbnjson::Object();
+        std::string spaceUri = SAF_USB_SPACE_METHOD;
+        std::string spacePayload = "{\"driveName\": \"" + devDriveName + "\"}";
+        spaceObj.put("uri", spaceUri);
+        spaceObj.put("payload", spacePayload);
+        nextReqArray.append(spaceObj);
+
+        ctxPtr->reqData->params.put("nextReq", nextReqArray);
+        LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),USBStorageProvider::onGetPropertiesReply, ctxPtr, NULL, &lserror);
+    }
 }
 
 void USBStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> data)
