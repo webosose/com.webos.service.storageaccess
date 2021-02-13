@@ -97,7 +97,6 @@ pbnjson::JValue USBPbnJsonParser::ParseGetProperties(pbnjson::JValue rootObj, st
     LOG_DEBUG_SAF("%s", __FUNCTION__);
     pbnjson::JValue rawObj = rootObj;
     pbnjson::JValue respObj = pbnjson::Object();
-    pbnjson::JValue attributesArr = pbnjson::Array();
 
     if(rawObj.isArray() == false)
     {
@@ -128,7 +127,6 @@ pbnjson::JValue USBPbnJsonParser::ParseGetProperties(pbnjson::JValue rootObj, st
             respObj.put("totalSpace", infoObj["totalSize"]);
             respObj.put("freeSpace",  infoObj["freeSize"]);
         }
-        respObj.put("attributes", attributesArr);
     }
     return respObj;
 }

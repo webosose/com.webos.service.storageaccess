@@ -96,6 +96,9 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
     if(ctxPtr->reqData->params.hasKey("path"))
     {
         pbnjson::JValue respObj = pbnjson::Object();
+        pbnjson::JValue attributesArr = pbnjson::Array();
+        pbnjson::JValue attrObj = pbnjson::Object();
+
         std::unique_ptr<USBSpaceInfo> propPtr = USBOperationHandler::getInstance().getProperties(ctxPtr->reqData->params["path"].asString());
         bool status = (propPtr->getStatus() < 0)?(false):(true);
         respObj.put("returnValue", status);
@@ -106,6 +109,9 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
 
             respObj.put("writable", propPtr->getIsWritable());
             respObj.put("deletable", propPtr->getIsDeletable());
+            attrObj.put("LastModTimeStamp", propPtr->getLastModTime());
+            attributesArr.append(attrObj);
+            respObj.put("attributes", attributesArr);
         }
         else
         {
