@@ -86,7 +86,7 @@ bool SAFLunaService::handleExtraCommand(LSMessage &message)
     int parseError = 0;
     const std::string schema = STRICT_SCHEMA(PROPS_3(PROP(storageType, string), PROP(driveId, string),
         OBJECT(operation, OBJSCHEMA_2(PROP(type, string), OBJECT(payload,
-        OBJSCHEMA_3(PROP(clientId, string), PROP(clientSecret, string), PROP(secretToken, string))))))
+        OBJSCHEMA_4(PROP(clientId, string), PROP(clientSecret, string), PROP(secretToken, string), PROP(refreshToken, string))))))
         REQUIRED_3(storageType, driveId, operation));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
@@ -260,7 +260,8 @@ bool SAFLunaService::listStorageProviders(LSMessage &message)
         return true;
     }
     shared_ptr<vector<StorageType>> storageProviders = DocumentProviderFactory::getSupportedDocumentProviders();
-    for (auto itr = storageProviders->begin(); itr != storageProviders->end(); ++itr) {
+    for (auto itr = storageProviders->begin(); itr != storageProviders->end(); ++itr)
+    {
         if(*itr == StorageType::USB)
         {
             requestObj.put("storageType","USB");

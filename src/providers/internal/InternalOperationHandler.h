@@ -38,17 +38,22 @@ private:
     std::string mName;
     std::string mPath;
     std::string mType;
+    std::string mModTime;
     uint32_t mSize;
 
     void init();
     std::string getFileType(std::string);
+    std::string getLastWrite(std::string);
     uint32_t getFileSize(std::string);
+    std::string getModTime(std::string);
+
 public:
     FolderContent(std::string);
     std::string getName() { return mName; }
     std::string getPath() { return mPath; }
     std::string getType() { return mType; }
     uint32_t getSize() { return mSize; }
+    std::string getLastModTime() { return mModTime; }
 };
 
 class FolderContents
@@ -85,6 +90,7 @@ public:
     std::uint32_t getAvailSpaceMB();
     bool getIsWritable();
     bool getIsDeletable();
+	std::string getLastModTime();
 	int32_t getStatus();
 };
 

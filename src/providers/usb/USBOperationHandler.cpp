@@ -54,18 +54,24 @@ void USBFolderContent::init()
 
 std::string USBFolderContent::getFileType(std::string filePath)
 {
-    std::string type = "unknown";
+
+    std::string type = "UNKNOWN";
+
+    if (fs::is_regular_file(filePath)) type = "REGULAR";
+    else if (fs::is_symlink(filePath)) type = "LINKFILE";
+    else if (fs::is_directory(filePath)) type = "DIRECTORY";
+
+#if 0
     if (!fs::exists(filePath)) type = "unavailable";
-    else if (fs::is_regular_file(filePath)) type = "regular";
     else if (fs::is_block_file(filePath)) type = "block";
     else if (fs::is_character_file(filePath)) type = "character";
     else if (fs::is_fifo(filePath)) type = "fifo";
     else if (fs::is_other(filePath)) type = "other";
     else if (fs::is_socket(filePath)) type = "socket";
-    else if (fs::is_symlink(filePath)) type = "symlink";
     else if (fs::is_empty(filePath)) type = "empty";
-    else if (fs::is_directory(filePath)) type = "directory";
+#endif
     return type;
+
 }
 
 uint32_t USBFolderContent::getFileSize(std::string filePath)
@@ -80,15 +86,19 @@ uint32_t USBFolderContent::getFileSize(std::string filePath)
                 const std::filesystem::directory_options options = (
                     fs::directory_options::follow_directory_symlink |
                     fs::directory_options::skip_permission_denied);
-                for (const auto & entry : fs::recursive_directory_iterator(filePath, fs::directory_options(options)))
+                for (const auto & entry : fs::directory_iterator(filePath, fs::directory_options(options)))
                 {
-                    size += getFileSize(entry.path());
+                    std::string entryPath = entry.path();
+                    if (entryPath.find("/.") == std::string::npos)
+                        size += getFileSize(entryPath);
                 }
             }
             catch(fs::filesystem_error& e) {
                 size = 0;
             }
         }
+        else
+            size = 0;
     }
     catch(fs::filesystem_error& e) {
         size = 0;
@@ -103,17 +113,26 @@ USBFolderContents::USBFolderContents(std::string fullPath) : mFullPath(fullPath)
 
 void USBFolderContents::init()
 {
-    if (mFullPath.empty())  return;
+    if ((mFullPath.empty()) || !(fs::exists(mFullPath))) 
+    {
+        mStatus = INVALID_PATH;
+        return;
+    }
     mContents.clear();
     try {
         const std::filesystem::directory_options options = (
             fs::directory_options::follow_directory_symlink |
             fs::directory_options::skip_permission_denied);
-        for (const auto & entry : fs::recursive_directory_iterator(mFullPath, fs::directory_options(options)))
+        for (const auto & entry : fs::directory_iterator(mFullPath, fs::directory_options(options)))
         {
-            std::shared_ptr<USBFolderContent> folderObj = std::shared_ptr<USBFolderContent>(new USBFolderContent(entry.path()));
-            mContents.push_back(folderObj);
-            //LOG_DEBUG_SAF("%s: Path: %s, Total: %d", __FUNCTION__, entry.path().c_str(), mContents.size());
+            std::string entryPath = entry.path();
+            if (entryPath.find("/.") == std::string::npos)
+            {
+                std::shared_ptr<USBFolderContent> folderObj
+                    = std::shared_ptr<USBFolderContent>(new USBFolderContent(entryPath));
+                mContents.push_back(folderObj);
+                //LOG_DEBUG_SAF("%s: Path: %s, Total: %d", __FUNCTION__, entry.path().c_str(), mContents.size());
+            }
         }
     }
     catch(fs::filesystem_error& e) {
@@ -378,6 +397,20 @@ bool USBSpaceInfo::getIsDeletable()
 int32_t USBSpaceInfo::getStatus()
 {
     return mStatus;
+}
+
+std::string USBSpaceInfo::getLastModTime()
+{
+    std::string timeStamp;
+    if (fs::exists(mPath))
+    {
+        using namespace std::chrono_literals;
+        auto ftime = fs::last_write_time(mPath);
+        std::time_t cftime = decltype(ftime)::clock::to_time_t(ftime);
+        timeStamp = std::asctime(std::localtime(&cftime));
+        timeStamp  = timeStamp .substr(0, timeStamp .find("\n"));
+    }
+    return timeStamp;
 }
 
 USBOperationHandler::USBOperationHandler()

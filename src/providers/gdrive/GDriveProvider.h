@@ -60,6 +60,7 @@ private:
     string getFileID(Drive, const vector<string>&);
     void insertMimeTypes();
     string getMimeType(string);
+    std::string getFileType(std::string);
     void setErrorMessage(shared_ptr<ValuePairMap>, string);
 	bool validateExtraCommand(std::vector<std::string>, std::shared_ptr<RequestData>);
     map<string, string> mimetypesMap;

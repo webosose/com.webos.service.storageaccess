@@ -36,10 +36,19 @@ InternalStorageProvider::~InternalStorageProvider()
 
 void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> reqData)
 {
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    std::string driveId = reqData->params["driveId"].asString();
+    pbnjson::JValue respObj = pbnjson::Object();
+    if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     std::string path = reqData->params["path"].asString();
     int offset = reqData->params["offset"].asNumber<int>();
     int limit = reqData->params["limit"].asNumber<int>();
-
     bool status = false;
     int totalCount = 0;
     std::string fullPath;
@@ -58,15 +67,14 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
         for (int index = start; index < end; ++index)
         {
             pbnjson::JValue contentObj = pbnjson::Object();
-            contentObj.put("itemName", contVec[index]->getName());
-            contentObj.put("itemPath", contVec[index]->getPath());
-            contentObj.put("itemType", contVec[index]->getType());
+            contentObj.put("name", contVec[index]->getName());
+            contentObj.put("path", contVec[index]->getPath());
+            contentObj.put("type", contVec[index]->getType());
             contentObj.put("size", int(contVec[index]->getSize()));
             contenResArr.append(contentObj);
         }
         status = true;
     }
-    pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", status);
     if (status)
     {
@@ -87,8 +95,17 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
 void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
-    std::string path;
+    std::string driveId = reqData->params["driveId"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
+    if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
+    std::string path;
     if (reqData->params.hasKey("path"))
         path = reqData->params["path"].asString();
     if (path.empty())
@@ -107,10 +124,15 @@ void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData
     respObj.put("returnValue", status);
     if (status)
     {
+        pbnjson::JValue attributesArr = pbnjson::Array();
         if (reqData->params.hasKey("storageType"))
             respObj.put("storageType", reqData->params["storageType"].asString());
         respObj.put("writable", propPtr->getIsWritable());
         respObj.put("deletable", propPtr->getIsDeletable());
+        pbnjson::JValue attrObj = pbnjson::Object();
+        attrObj.put("LastModTimeStamp", propPtr->getLastModTime());
+        attributesArr.append(attrObj);
+        respObj.put("attributes", attributesArr);
         if (path == DEFAULT_INTERNAL_PATH)
         {
             respObj.put("totalSpace", int(propPtr->getCapacityMB()));
@@ -130,6 +152,16 @@ void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData
 void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    std::string driveId = reqData->params["srcDriveId"].asString();
+    pbnjson::JValue respObj = pbnjson::Object();
+    if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();
     bool overwrite = false;
@@ -145,7 +177,6 @@ void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
         retStatus = copyPtr->getStatus();
         LOG_DEBUG_SAF("%s: statussss : %d", __FUNCTION__, retStatus);
         bool status = (retStatus < 0)?(false):(true);
-        pbnjson::JValue respObj = pbnjson::Object();
         respObj.put("returnValue", status);
         if (status)
         {
@@ -171,6 +202,16 @@ void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
 void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    std::string driveId = reqData->params["srcDriveId"].asString();
+    pbnjson::JValue respObj = pbnjson::Object();
+    if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();
     bool overwrite = false;
@@ -186,7 +227,6 @@ void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
         retStatus = movePtr->getStatus();
         LOG_DEBUG_SAF("%s: statussss : %d", __FUNCTION__, retStatus);
         bool status = (retStatus < 0)?(false):(true);
-        pbnjson::JValue respObj = pbnjson::Object();
         respObj.put("returnValue", status);
         if (status)
         {
@@ -212,10 +252,19 @@ void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
 void InternalStorageProvider::remove(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    std::string driveId = reqData->params["driveId"].asString();
+    pbnjson::JValue respObj = pbnjson::Object();
+    if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     std::string path = reqData->params["path"].asString();
     std::unique_ptr<InternalRemove> remPtr = InternalOperationHandler::getInstance().remove(path);
     bool status = (remPtr->getStatus() < 0)?(false):(true);
-    pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", status);
     if (!status)
     {
@@ -230,11 +279,20 @@ void InternalStorageProvider::remove(std::shared_ptr<RequestData> reqData)
 void InternalStorageProvider::rename(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    std::string driveId = reqData->params["driveId"].asString();
+    pbnjson::JValue respObj = pbnjson::Object();
+    if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     std::string srcPath = reqData->params["path"].asString();
     std::string destPath = reqData->params["newName"].asString();
     std::unique_ptr<InternalRename> renamePtr = InternalOperationHandler::getInstance().rename(srcPath, destPath);
     bool status = (renamePtr->getStatus() < 0)?(false):(true);
-    pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", status);
     if (!status)
     {

@@ -483,9 +483,9 @@ void USBStorageProvider::listFolderContentsMethod(std::shared_ptr<RequestData> r
         for (int index = start; index < end; ++index)
         {
             pbnjson::JValue contentObj = pbnjson::Object();
-            contentObj.put("itemName", contVec[index]->getName());
-            contentObj.put("itemPath", contVec[index]->getPath());
-            contentObj.put("itemType", contVec[index]->getType());
+            contentObj.put("name", contVec[index]->getName());
+            contentObj.put("path", contVec[index]->getPath());
+            contentObj.put("type", contVec[index]->getType());
             contentObj.put("size", int(contVec[index]->getSize()));
             contenResArr.append(contentObj);
         }

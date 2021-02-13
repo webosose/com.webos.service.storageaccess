@@ -76,6 +76,7 @@ void GDriveProvider::extraMethod(std::shared_ptr<RequestData> reqData)
         while (mCred.use_count() != 0)
             mCred.reset();
         mCred = std::shared_ptr<Credential>(new Credential(&mAuthParam));
+        mUser = mAuthParam["client_secret"];
         respObj.put("returnValue", true);
         reqData->cb(respObj, reqData->subs);
         mGDriveOperObj.loadFileIds(mCred);
@@ -138,6 +139,15 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string driveId = reqData->params["driveId"].asString();
+    if(mUser != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     mAuthParam["access_token"] = reqData->params["operation"]["payload"]["secretToken"].asString();
     LOG_DEBUG_SAF("authenticateCloud :client_id = [ %s ]   client_secret = [ %s ]   secret_token = [ %s ]", mAuthParam["client_id"].c_str(),
         mAuthParam["client_secret"].c_str(), mAuthParam["access_token"].c_str());
@@ -174,12 +184,21 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
 void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    pbnjson::JValue respObj = pbnjson::Object();
+    std::string driveId = reqData->params["driveId"].asString();
+    if(mUser != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     std::string path = reqData->params["path"].asString();
     int limit = reqData->params["limit"].asNumber<int>();
     int offset = reqData->params["offset"].asNumber<int>();
     if (reqData->params.hasKey("refresh") && reqData->params["refresh"].asBool())
         mGDriveOperObj.loadFileIds(mCred);
-    pbnjson::JValue respObj = pbnjson::Object();
     if (mAuthParam["refresh_token"].empty())
     {
         respObj.put("returnValue", false);
@@ -218,10 +237,11 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
             LOG_DEBUG_SAF("MimeType %s", file.get_mimeType().c_str());
             LOG_DEBUG_SAF("File Size %ld", file.get_fileSize());
             pbnjson::JValue contentObj = pbnjson::Object();
-            contentObj.put("itemPath", entry.first);
+            contentObj.put("path", entry.first);
             //contentObj.put("id", file.get_id());
-            contentObj.put("itemName", file.get_title());
-            contentObj.put("itemType", file.get_mimeType());
+            contentObj.put("name", file.get_title());
+            contentObj.put("mimeType", file.get_mimeType());
+            contentObj.put("type", getFileType(file.get_mimeType()));
             if (-1 == file.get_fileSize())
                 contentObj.put("size", 0);
             else
@@ -246,6 +266,14 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string driveId = reqData->params["driveId"].asString();
+    if(mUser != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     if (mAuthParam["refresh_token"].empty())
     {
         respObj.put("returnValue", false);
@@ -272,6 +300,7 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("==>Usrename:%s", username.c_str());
     LOG_DEBUG_SAF("==>TotalSpace:%ld", totalspace);
     LOG_DEBUG_SAF("==>FreeSpace:%ld", freespace);
+    pbnjson::JValue attributesArr = pbnjson::Array();
     respObj.put("returnValue", true);
     respObj.put("storageType", "CLOUD");
     respObj.put("writable", true);
@@ -281,6 +310,7 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
         respObj.put("totalSpace", (int)(totalspace / 1000000));
         respObj.put("freeSpace", (int)(freespace / 1000000));
     }
+    respObj.put("attributes", attributesArr);
     reqData->cb(respObj, reqData->subs);
 }
 
@@ -288,6 +318,14 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string driveId = reqData->params["srcDriveId"].asString();
+    if(mUser != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();
     std::string srcStorageType = reqData->params["srcStorageType"].asString();
@@ -408,6 +446,14 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string driveId = reqData->params["srcDriveId"].asString();
+    if(mUser != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();
     std::string srcStorageType = reqData->params["srcStorageType"].asString();
@@ -532,6 +578,14 @@ void GDriveProvider::remove(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("========> Remove API");
     std::string path = reqData->params["path"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string driveId = reqData->params["driveId"].asString();
+    if(mUser != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     if (mAuthParam["refresh_token"].empty())
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
@@ -565,6 +619,14 @@ void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string driveId = reqData->params["driveId"].asString();
+    if(mUser != driveId)
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+        respObj.put("errorText", "Invalid DriveID");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     if (mAuthParam["refresh_token"].empty())
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
@@ -599,11 +661,14 @@ void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
     pbnjson::JValue gdriveResArr = pbnjson::Array();
-    pbnjson::JValue gdriveRes = pbnjson::Object();
-    gdriveRes.put("storageName", "GDRIVE");
-    gdriveRes.put("driverId", mUser);
-    gdriveRes.put("path", "/");
-    gdriveResArr.append(gdriveRes);
+    if (!mAuthParam["refresh_token"].empty())
+    {
+        pbnjson::JValue gdriveRes = pbnjson::Object();
+        gdriveRes.put("storageName", "GDRIVE");
+        gdriveRes.put("driverId", mUser);
+        gdriveRes.put("path", "/");
+        gdriveResArr.append(gdriveRes);
+    }
     respObj.put("CLOUD", gdriveResArr);
     reqData->params.put("response", respObj);
     reqData->cb(reqData->params, std::move(reqData->subs));
@@ -649,6 +714,16 @@ void GDriveProvider::insertMimeTypes() {
 string GDriveProvider::getMimeType(std::string fileType) {
     std::transform(fileType.begin(), fileType.end(), fileType.begin(), ::tolower);
     return mimetypesMap[fileType];
+    
+}
+
+string GDriveProvider::getFileType(std::string mimeType) {
+    std::string fileType = "UNKNOWN";
+    if(mimeType.rfind("folder") != std::string::npos)
+        fileType = "DIRECTORY";
+    else if(!mimeType.empty())
+        fileType = "REGULAR";
+    return fileType;
 }
 
 void GDriveProvider::copyFileinGDrive(Drive service, string srcFileID, string destFolderId, string title) {

@@ -150,6 +150,7 @@ public:
     bool getIsWritable();
     bool getIsDeletable();
     int32_t getStatus();
+	std::string getLastModTime();
 };
 
 class USBOperationHandler

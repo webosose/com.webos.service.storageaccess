@@ -62,7 +62,9 @@ std::map<std::string, std::string> GDriveOperation::getFileMap(std::string path)
         {
             if(entry.first == path)
                 continue;
-            if(entry.first.find(path) != std::string::npos)
+            auto pos = (entry.first.find(path));
+            //if((entry.first.find(path) != std::string::npos) && ())
+            if((pos != std::string::npos) && (entry.first.find("/",pos+path.length()+1) == std::string::npos))
                 temp[entry.first] = entry.second;
         }
         return temp;
