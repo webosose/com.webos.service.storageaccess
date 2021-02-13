@@ -225,7 +225,7 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
             if (-1 == file.get_fileSize())
                 contentObj.put("size", 0);
             else
-                contentObj.put("size", (totalspace - file.get_fileSize()));
+                contentObj.put("size", (int)(totalspace - file.get_fileSize()));
             contentsObj.append(contentObj);
         }
         respObj.put("returnValue", true);
@@ -278,8 +278,8 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
     respObj.put("deletable", true);
     if (path == "root")
     {
-        respObj.put("totalSpace", totalspace / 1000000);
-        respObj.put("freeSpace", freespace / 1000000);
+        respObj.put("totalSpace", (int)(totalspace / 1000000));
+        respObj.put("freeSpace", (int)(freespace / 1000000));
     }
     reqData->cb(respObj, reqData->subs);
 }

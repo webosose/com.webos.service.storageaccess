@@ -132,7 +132,8 @@ namespace SAFErrors
 	        USB_STORAGE_NOT_EXISTS,
 	        USB_SUB_STORAGE_NOT_EXISTS,
 	        MORE_ATTACHED_STORAGES_THAN_USB,
-	        DRIVE_NOT_MOUNTED
+	        DRIVE_NOT_MOUNTED,
+	        USB_DRIVE_ALREADY_EJECTED
 	    };
 
 	    static std::map<int, std::string> mUSBErrorTextTable =
@@ -149,6 +150,7 @@ namespace SAFErrors
 	        { SAFErrors::FILE_ALREADY_EXISTS, "USB File Already Exists" },
 	        { DRIVE_NOT_MOUNTED, "USB Drive Not Mounted"},
 	        { SAFErrors::NO_ERROR, "USB No error" },
+	        { USB_DRIVE_ALREADY_EJECTED, "Drive Already Ejected"}
 	    };
 
 	    std::string getUSBErrorString(int errorCode);

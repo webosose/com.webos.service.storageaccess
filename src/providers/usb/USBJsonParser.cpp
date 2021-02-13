@@ -27,18 +27,36 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
 
     if(ret)
     {
-        if(replyObj.hasKey("deviceListInfo") && replyObj["deviceListInfo"].isArray() && replyObj["deviceListInfo"].arraySize() > 1)
+        if(replyObj.hasKey("deviceListInfo"))
         {
-            responseObj.put("returnValue", false);
-            responseObj.put("errorCode", SAFErrors::USBErrors::MORE_ATTACHED_STORAGES_THAN_USB);
-            responseObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::MORE_ATTACHED_STORAGES_THAN_USB));
+            if(replyObj["deviceListInfo"].isArray() && replyObj["deviceListInfo"].arraySize() > 1)
+            {
+                responseObj.put("returnValue", false);
+                responseObj.put("errorCode", SAFErrors::USBErrors::MORE_ATTACHED_STORAGES_THAN_USB);
+                responseObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::MORE_ATTACHED_STORAGES_THAN_USB));
+                return responseObj;
+            }
+            else if(replyObj["deviceListInfo"].isArray() && replyObj["deviceListInfo"].arraySize() == 1)
+            {
+                if(replyObj["deviceListInfo"][0].hasKey("storageDeviceList"))
+                {
+                    if(replyObj["deviceListInfo"][0]["storageDeviceList"].isArray())
+                        usbArray = replyObj["deviceListInfo"][0]["storageDeviceList"];
+                        numUSBDevices = usbArray.arraySize();
+                }
+            }
         }
-        if(replyObj.hasKey("deviceListInfo") && replyObj["deviceListInfo"][0].hasKey("storageDeviceList"))
+
+        if(replyObj.hasKey("storageDeviceList"))
         {
-            usbArray = replyObj["deviceListInfo"][0]["storageDeviceList"];
-            numUSBDevices = usbArray.arraySize();
+            if(replyObj["storageDeviceList"].isArray())
+            {
+                usbArray = replyObj["storageDeviceList"];
+                numUSBDevices = usbArray.arraySize();
+            }
         }
     }
+
     LOG_DEBUG_SAF("Number of USB devices attached:%d", numUSBDevices);
     if(numUSBDevices == 0)
     {
@@ -56,7 +74,7 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
                 {
                     pbnjson::JValue rObj = pbnjson::Object();
                     if(usbArray[i]["storageDriveList"][j].hasKey("driveName"))
-                        rObj.put("storgaeName", usbArray[i]["storageDriveList"][j]["driveName"]);
+                        rObj.put("storageName", usbArray[i]["storageDriveList"][j]["driveName"]);
                     if(usbArray[i]["storageDriveList"][j].hasKey("uuid"))
                         sid = usbArray[i]["serialNumber"].asString() + "-" + usbArray[i]["storageDriveList"][j]["uuid"].asString();
                         rObj.put("driveId", sid);
@@ -116,7 +134,14 @@ pbnjson::JValue USBPbnJsonParser::ParseGetProperties(pbnjson::JValue rootObj, st
 
 pbnjson::JValue USBPbnJsonParser::ParseEject(pbnjson::JValue rootObj)
 {
-    return rootObj[0];
+    if(rootObj.isArray())
+    {
+        if(rootObj.arraySize() == 1)
+        {
+            return rootObj[0];
+        }
+    }
+    return rootObj;
 }
 
 pbnjson::JValue USBPbnJsonParser::ParseFormat(pbnjson::JValue rootObj)
