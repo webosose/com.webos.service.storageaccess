@@ -87,7 +87,7 @@ bool SAFLunaService::handleExtraCommand(LSMessage &message)
     const std::string schema = STRICT_SCHEMA(PROPS_3(PROP(storageType, string), PROP(driveId, string),
         OBJECT(operation, OBJSCHEMA_2(PROP(type, string), OBJECT(payload,
         OBJSCHEMA_4(PROP(clientId, string), PROP(clientSecret, string), PROP(secretToken, string), PROP(refreshToken, string))))))
-        REQUIRED_3(storageType, driveId, operation));
+        REQUIRED_2(storageType,  operation));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
         LOG_DEBUG_SAF("%s, Invalid Json Format Error", __FUNCTION__);

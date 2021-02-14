@@ -406,9 +406,8 @@ std::string USBSpaceInfo::getLastModTime()
     {
         using namespace std::chrono_literals;
         auto ftime = fs::last_write_time(mPath);
-        std::time_t cftime = decltype(ftime)::clock::to_time_t(ftime);
-        timeStamp = std::asctime(std::localtime(&cftime));
-        timeStamp  = timeStamp .substr(0, timeStamp .find("\n"));
+        auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
+        timeStamp = ctime((time_t*)&timeMs);
     }
     return timeStamp;
 }
