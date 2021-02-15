@@ -31,6 +31,7 @@ enum InternalOperErrors
 	SUCCESS = 100
 };
 int getInternalErrorCode(int errorCode);
+bool validateInternalPath(std::string&);
 
 class FolderContent
 {
@@ -45,7 +46,7 @@ private:
     std::string getFileType(std::string);
     std::string getLastWrite(std::string);
     uint32_t getFileSize(std::string);
-    std::string getModTime(std::string);
+    std::string getModTime();
 
 public:
     FolderContent(std::string);

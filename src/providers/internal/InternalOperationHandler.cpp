@@ -24,6 +24,26 @@
 
 namespace fs = std::filesystem;
 
+bool validateInternalPath(std::string& path)
+{
+    bool retVal = true;
+    try
+    {
+        if (path.empty() || (path.find("/") != 0)
+            || (path[path.size() - 1] == '/') || !fs::exists(path))
+        {
+            LOG_DEBUG_SAF("%s: invalid path [%s]", __FUNCTION__, path.c_str());
+            retVal = false;
+        }
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        retVal = false;
+    }
+    return retVal;
+}
+
 int getInternalErrorCode(int errorCode)
 {
     static std::map<int, int> convMap = {
@@ -52,67 +72,86 @@ void FolderContent::init()
     mName = mPath.substr(mPath.rfind("/")+1);
     mType = getFileType(mPath);
     mSize = getFileSize(mPath);
-    mModTime = getModTime(mPath);
+    mModTime = getModTime();
 }
 
 std::string FolderContent::getFileType(std::string filePath)
 {
     std::string type = "UNKNOWN";
-
-    if (fs::is_regular_file(filePath)) type = "REGULAR";
-    else if (fs::is_symlink(filePath)) type = "LINKFILE";
-    else if (fs::is_directory(filePath)) type = "DIRECTORY";
-
+    try
+    {
+        if (!validateInternalPath(filePath)) type = "UNKNOWN";
+        else if (fs::is_regular_file(filePath)) type = "REGULAR";
+        else if (fs::is_symlink(filePath)) type = "LINKFILE";
+        else if (fs::is_directory(filePath)) type = "DIRECTORY";
 #if 0
-    if (!fs::exists(filePath)) type = "unavailable";
-    else if (fs::is_block_file(filePath)) type = "block";
-    else if (fs::is_character_file(filePath)) type = "character";
-    else if (fs::is_fifo(filePath)) type = "fifo";
-    else if (fs::is_other(filePath)) type = "other";
-    else if (fs::is_socket(filePath)) type = "socket";
-    else if (fs::is_empty(filePath)) type = "empty";
+        if (!fs::exists(filePath)) type = "unavailable";
+        else if (fs::is_block_file(filePath)) type = "block";
+        else if (fs::is_character_file(filePath)) type = "character";
+        else if (fs::is_fifo(filePath)) type = "fifo";
+        else if (fs::is_other(filePath)) type = "other";
+        else if (fs::is_socket(filePath)) type = "socket";
+        else if (fs::is_empty(filePath)) type = "empty";
 #endif
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        type = "UNKNOWN";
+    }
     return type;
 }
 
 uint32_t FolderContent::getFileSize(std::string filePath)
 {
     std::uint32_t size = 0;
-    try {
-        if (fs::is_regular_file(filePath))
+    try
+    {
+        if (!validateInternalPath(filePath))
+            size = 0;
+        else if (fs::is_regular_file(filePath))
             size = fs::file_size(filePath);
         else if(fs::is_directory(filePath))
         {
-            try {
-                const std::filesystem::directory_options options = (
-                    fs::directory_options::follow_directory_symlink |
-                    fs::directory_options::skip_permission_denied);
-                for (const auto & entry : fs::directory_iterator(filePath, fs::directory_options(options)))
-                {
-                    std::string entryPath = entry.path();
-                    if (entryPath.find("/.") == std::string::npos)
-                        size += getFileSize(entryPath);
-                }
-            }
-            catch(fs::filesystem_error& e) {
-                size = 0;
+            const std::filesystem::directory_options options = (
+                fs::directory_options::follow_directory_symlink |
+                fs::directory_options::skip_permission_denied);
+            for (const auto & entry : fs::directory_iterator(filePath, fs::directory_options(options)))
+            {
+                std::string entryPath = entry.path();
+                if (entryPath.find("/.") == std::string::npos)
+                    size += getFileSize(entryPath);
             }
         }
         else
             size = 0;
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         size = 0;
     }
     return size;
 }
 
-std::string FolderContent::getModTime(std::string filePath)
+std::string FolderContent::getModTime()
 {
-    using namespace std::chrono_literals;
-    auto ftime = fs::last_write_time(mPath);
-    auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
-    std::string timeStamp = ctime((time_t*)&timeMs);
+    std::string timeStamp;
+    try
+    {
+        if (validateInternalPath(mPath))
+        {
+            using namespace std::chrono_literals;
+            auto ftime = fs::last_write_time(mPath);
+            auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
+            timeStamp = ctime((time_t*)&timeMs);
+        }
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        timeStamp.clear();
+    }
     return timeStamp;
 }
 
@@ -123,13 +162,14 @@ FolderContents::FolderContents(std::string fullPath) : mFullPath(fullPath), mSta
 
 void FolderContents::init()
 {
-    if (mFullPath.empty() || !(fs::exists(mFullPath))) 
+    try
     {
-        mStatus = INVALID_PATH;
-        return;
-    }
-    mContents.clear();
-    try {
+        if (!validateInternalPath(mFullPath))
+        {
+            mStatus = INVALID_PATH;
+            return;
+        }
+        mContents.clear();
         const std::filesystem::directory_options options = (
             fs::directory_options::follow_directory_symlink |
             fs::directory_options::skip_permission_denied);
@@ -144,7 +184,9 @@ void FolderContents::init()
             }
         }
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         mTotalCount = 0;
         mStatus = INVALID_PATH;
     }
@@ -158,18 +200,25 @@ InternalSpaceInfo::InternalSpaceInfo(std::string path) : mPath(path), mStatus(NO
 
 void InternalSpaceInfo::init()
 {
-    try{
+    try
+    {
+        if (!validateInternalPath(mPath))
+        {
+            mStatus = INVALID_PATH;
+            return;
+        }
         fs::space_info dev = fs::space(mPath);
         mCapacity = dev.capacity;
         mFreeSpace = dev.free;
         mAvailSpace = dev.available;
-
         fs::perms ps = fs::status(mPath).permissions();
         mIsWritable = ((ps & fs::perms::owner_write) != fs::perms::none);
         mIsDeletable = ((ps & fs::perms::group_write) != fs::perms::none);
         mStatus = SUCCESS;
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         mStatus = INVALID_PATH;
     }
 }
@@ -202,12 +251,22 @@ bool InternalSpaceInfo::getIsDeletable()
 std::string InternalSpaceInfo::getLastModTime()
 {
     std::string timeStamp;
-    if (fs::exists(mPath))
+    try
     {
-        using namespace std::chrono_literals;
-        auto ftime = fs::last_write_time(mPath);
-        auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
-        timeStamp = ctime((time_t*)&timeMs);
+        if (validateInternalPath(mPath))
+        {
+            using namespace std::chrono_literals;
+            auto ftime = fs::last_write_time(mPath);
+            auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
+            timeStamp = ctime((time_t*)&timeMs);
+        }
+        else
+            mStatus = INVALID_PATH;
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        timeStamp.clear();
     }
     return timeStamp;
 }
@@ -226,33 +285,43 @@ InternalCopy::InternalCopy(std::string src, std::string dest, bool overwrite)
 
 void InternalCopy::init()
 {
-    if (!fs::exists(mSrcPath))
+    try
     {
-        mStatus = INVALID_SOURCE_PATH;
-        return;
+        if (!validateInternalPath(mSrcPath))
+        {
+            mStatus = INVALID_SOURCE_PATH;
+            return;
+        }
+        if (!validateInternalPath(mDestPath))
+        {
+            mStatus = INVALID_DEST_PATH;
+            return;
+        }
+        std::string desPath = mDestPath + mSrcPath.substr(mSrcPath.rfind("/"));
+        if (fs::exists(desPath) & !mOverwrite)
+        {
+            mStatus = FILE_ALREADY_EXISTS;
+            return;
+        }
+        if (fs::is_directory(mSrcPath))
+        {
+            if (!fs::exists(desPath))
+                fs::create_directories(desPath);
+            mDestPath = desPath;
+        }
     }
-    if (!fs::exists(mDestPath))
+    catch(fs::filesystem_error& e)
     {
-        mStatus = INVALID_DEST_PATH;
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        mStatus = PERMISSION_DENIED;
         return;
-    }
-    std::string desPath = mDestPath + mSrcPath.substr(mSrcPath.rfind("/"));
-    if (fs::exists(desPath) & !mOverwrite)
-    {
-        mStatus = FILE_ALREADY_EXISTS;
-        return;
-    }
-    if (fs::is_directory(mSrcPath))
-    {
-        if (!fs::exists(desPath))
-            fs::create_directories(desPath);
-        mDestPath = desPath;
     }
     mSrcSize = FolderContent(mSrcPath).getSize();
     mDestSize = FolderContent(mDestPath).getSize();
     std::async(std::launch::async, [this]()
         {
-            try {
+            try
+            {
                 auto copyOptions = fs::copy_options::recursive
                            | fs::copy_options::skip_symlinks;
                 if (this->mOverwrite)
@@ -262,7 +331,9 @@ void InternalCopy::init()
                 fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
                 this->mStatus = SUCCESS;
             }
-            catch(fs::filesystem_error& e) {
+            catch(fs::filesystem_error& e)
+            {
+                LOG_DEBUG_SAF("%s", e.what());
                 this->mStatus = PERMISSION_DENIED;
             }
         });
@@ -287,8 +358,9 @@ InternalRemove::InternalRemove(std::string path)
 
 void InternalRemove::init()
 {
-    try {
-        if (fs::exists(mPath))
+    try
+    {
+        if (validateInternalPath(mPath))
         {
             fs::remove_all(mPath);
             mStatus = SUCCESS;
@@ -296,7 +368,9 @@ void InternalRemove::init()
         else
             mStatus = INVALID_PATH;
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         mStatus = PERMISSION_DENIED;
     }
 }
@@ -314,13 +388,14 @@ InternalMove::InternalMove(std::string srcPath, std::string destPath, bool overw
 
 void InternalMove::init()
 {
-    try {
-        if (!fs::exists(mSrcPath))
+    try
+    {
+        if (!validateInternalPath(mSrcPath))
         {
             mStatus = INVALID_SOURCE_PATH;
             return;
         }
-        if (!fs::exists(mDestPath))
+        if (!validateInternalPath(mDestPath))
         {
             mStatus = INVALID_DEST_PATH;
             return;
@@ -341,7 +416,8 @@ void InternalMove::init()
         mDestSize = FolderContent(mDestPath).getSize();
         std::async(std::launch::async, [this]()
             {
-                try {
+                try
+                {
                     auto copyOptions = fs::copy_options::recursive
                                | fs::copy_options::skip_symlinks;
                     if (this->mOverwrite)
@@ -351,13 +427,17 @@ void InternalMove::init()
                     fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
                     this->mStatus = SUCCESS;
                 }
-                catch(fs::filesystem_error& e) {
+                catch(fs::filesystem_error& e)
+                {
+                    LOG_DEBUG_SAF("%s", e.what());
                     this->mStatus = PERMISSION_DENIED;
                 }
             });
         fs::remove_all(mSrcPath);
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         mStatus = PERMISSION_DENIED;
     }
 }
@@ -383,16 +463,23 @@ void InternalRename::init ()
 {
     try
     {
-        if (!fs::exists(mOldAbsPath))
+        if (!validateInternalPath(mOldAbsPath))
         {
-            mStatus = INVALID_PATH;
+            mStatus = INVALID_SOURCE_PATH;
+            return;
+        }
+        if (mNewAbsPath.empty() || (mNewAbsPath.find("/") != std::string::npos))
+        {
+            mStatus = INVALID_DEST_PATH;
             return;
         }
         mNewAbsPath = mOldAbsPath.substr(0, mOldAbsPath.rfind("/") + 1) + mNewAbsPath;
         fs::rename(mOldAbsPath, mNewAbsPath);
         mStatus = SUCCESS;
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         mStatus = PERMISSION_DENIED;
     }
 }
@@ -409,11 +496,18 @@ InternalCreateDir::InternalCreateDir(std::string path) : mPath(path), mStatus(NO
 
 void InternalCreateDir::init ()
 {
-    try {
-        fs::create_directories(mPath);
-        mStatus = SUCCESS;
+    try
+    {
+        mStatus = INVALID_PATH;
+        if (validateInternalPath(mPath))
+        {
+            fs::create_directories(mPath);
+            mStatus = SUCCESS;
+        }
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         mStatus = PERMISSION_DENIED;
     }
 }
@@ -425,8 +519,15 @@ int32_t InternalCreateDir::getStatus()
 
 InternalOperationHandler::InternalOperationHandler()
 {
-    if (!fs::exists("/tmp/internal"))
-        fs::create_directories("/tmp/internal");
+    try
+    {
+        if (!fs::exists("/tmp/internal"))
+            fs::create_directories("/tmp/internal");
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+    }
 }
 
 InternalOperationHandler& InternalOperationHandler::getInstance()

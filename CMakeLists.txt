@@ -83,4 +83,3 @@ target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}  ${GDRIVE_LIBS}/libjconer.a 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
 
 webos_build_system_bus_files()
-webos_build_configured_file(files/systemd/com.webos.service.storageaccess.service SYSCONFDIR systemd/system)
