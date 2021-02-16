@@ -339,8 +339,12 @@ void InternalCopy::init()
         });
 }
 
-std::uint32_t InternalCopy::getStatus()
+std::int32_t InternalCopy::getStatus()
 {
+    if(mStatus < 0)
+    {
+        return mStatus;
+    }
     uint32_t size = FolderContent(mDestPath).getSize();
     uint32_t change = (mSrcSize - size + mDestSize);
     if ((mStatus >= NO_ERROR) && (change > 0))

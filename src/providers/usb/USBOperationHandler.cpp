@@ -18,19 +18,43 @@
 #include <filesystem>
 #include "USBOperationHandler.h"
 #include "SAFLog.h"
+#include <chrono>
+#include <iomanip>
+#include <fstream>
+
 namespace fs = std::filesystem;
+
+bool validateUSBPath(std::string& path)
+{
+    bool retVal = true;
+    try
+    {
+        if (path.empty() || (path.find("/") != 0)
+            || (path[path.size() - 1] == '/') || !fs::exists(path))
+        {
+            LOG_DEBUG_SAF("%s: invalid path [%s]", __FUNCTION__, path.c_str());
+            retVal = false;
+        }
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        retVal = false;
+    }
+    return retVal;
+}
 
 int getUSBErrorCode(int errorCode)
 {
     static std::map<int, int> convMap = {
-        {USBOperErrors::NO_ERROR,              SAFErrors::ERROR_NONE},
+        {USBOperErrors::NO_ERROR,              SAFErrors::NO_ERROR},
         {USBOperErrors::UNKNOWN,               SAFErrors::UNKNOWN_ERROR},
         {USBOperErrors::INVALID_PATH,          SAFErrors::INVALID_PATH},
         {USBOperErrors::INVALID_SOURCE_PATH,   SAFErrors::INVALID_SOURCE_PATH},
         {USBOperErrors::INVALID_DEST_PATH,     SAFErrors::INVALID_DEST_PATH},
         {USBOperErrors::FILE_ALREADY_EXISTS,   SAFErrors::FILE_ALREADY_EXISTS},
         {USBOperErrors::PERMISSION_DENIED,     SAFErrors::PERMISSION_DENIED},
-        {USBOperErrors::SUCCESS,               SAFErrors::ERROR_NONE},
+        {USBOperErrors::SUCCESS,               SAFErrors::NO_ERROR},
     };
 
     int retCode = SAFErrors::UNKNOWN_ERROR;
@@ -50,60 +74,87 @@ void USBFolderContent::init()
     mName = mPath.substr(mPath.rfind("/")+1);
     mType = getFileType(mPath);
     mSize = getFileSize(mPath);
+    mModTime = getModTime();
 }
 
 std::string USBFolderContent::getFileType(std::string filePath)
 {
-
     std::string type = "UNKNOWN";
-
-    if (fs::is_regular_file(filePath)) type = "REGULAR";
-    else if (fs::is_symlink(filePath)) type = "LINKFILE";
-    else if (fs::is_directory(filePath)) type = "DIRECTORY";
-
+    try
+    {
+        if (!validateUSBPath(filePath)) type = "UNKNOWN";
+        else if (fs::is_regular_file(filePath)) type = "REGULAR";
+        else if (fs::is_symlink(filePath)) type = "LINKFILE";
+        else if (fs::is_directory(filePath)) type = "DIRECTORY";
 #if 0
-    if (!fs::exists(filePath)) type = "unavailable";
-    else if (fs::is_block_file(filePath)) type = "block";
-    else if (fs::is_character_file(filePath)) type = "character";
-    else if (fs::is_fifo(filePath)) type = "fifo";
-    else if (fs::is_other(filePath)) type = "other";
-    else if (fs::is_socket(filePath)) type = "socket";
-    else if (fs::is_empty(filePath)) type = "empty";
+        if (!fs::exists(filePath)) type = "unavailable";
+        else if (fs::is_block_file(filePath)) type = "block";
+        else if (fs::is_character_file(filePath)) type = "character";
+        else if (fs::is_fifo(filePath)) type = "fifo";
+        else if (fs::is_other(filePath)) type = "other";
+        else if (fs::is_socket(filePath)) type = "socket";
+        else if (fs::is_empty(filePath)) type = "empty";
 #endif
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        type = "UNKNOWN";
+    }
     return type;
-
 }
 
 uint32_t USBFolderContent::getFileSize(std::string filePath)
 {
     std::uint32_t size = 0;
-    try {
-        if (fs::is_regular_file(filePath))
+    try
+    {
+        if (!validateUSBPath(filePath))
+            size = 0;
+        else if (fs::is_regular_file(filePath))
             size = fs::file_size(filePath);
         else if(fs::is_directory(filePath))
         {
-            try {
-                const std::filesystem::directory_options options = (
-                    fs::directory_options::follow_directory_symlink |
-                    fs::directory_options::skip_permission_denied);
-                for (const auto & entry : fs::directory_iterator(filePath, fs::directory_options(options)))
-                {
-                    std::string entryPath = entry.path();
-                    if (entryPath.find("/.") == std::string::npos)
-                        size += getFileSize(entryPath);
-                }
-            }
-            catch(fs::filesystem_error& e) {
-                size = 0;
+            const std::filesystem::directory_options options = (
+                fs::directory_options::follow_directory_symlink |
+                fs::directory_options::skip_permission_denied);
+            for (const auto & entry : fs::directory_iterator(filePath, fs::directory_options(options)))
+            {
+                std::string entryPath = entry.path();
+                if (entryPath.find("/.") == std::string::npos)
+                    size += getFileSize(entryPath);
             }
         }
         else
             size = 0;
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         size = 0;
     }
     return size;
+}
+
+std::string USBFolderContent::getModTime()
+{
+    std::string timeStamp;
+    try
+    {
+        if (validateUSBPath(mPath))
+        {
+            using namespace std::chrono_literals;
+            auto ftime = fs::last_write_time(mPath);
+            auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
+            timeStamp = ctime((time_t*)&timeMs);
+        }
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        timeStamp.clear();
+    }
+    return timeStamp;
 }
 
 USBFolderContents::USBFolderContents(std::string fullPath) : mFullPath(fullPath), mStatus(NO_ERROR)
@@ -113,13 +164,14 @@ USBFolderContents::USBFolderContents(std::string fullPath) : mFullPath(fullPath)
 
 void USBFolderContents::init()
 {
-    if ((mFullPath.empty()) || !(fs::exists(mFullPath))) 
+    try
     {
-        mStatus = INVALID_PATH;
-        return;
-    }
-    mContents.clear();
-    try {
+        if (!validateUSBPath(mFullPath))
+        {
+            mStatus = INVALID_PATH;
+            return;
+        }
+        mContents.clear();
         const std::filesystem::directory_options options = (
             fs::directory_options::follow_directory_symlink |
             fs::directory_options::skip_permission_denied);
@@ -135,7 +187,9 @@ void USBFolderContents::init()
             }
         }
     }
-    catch(fs::filesystem_error& e) {
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
         mTotalCount = 0;
         mStatus = INVALID_PATH;
         this->mErrMsg = e.what();
@@ -151,33 +205,43 @@ USBCopy::USBCopy(std::string src, std::string dest, bool overwrite)
 
 void USBCopy::init()
 {
-     if (!fs::exists(mSrcPath))
-     {
-         mStatus = INVALID_SOURCE_PATH;
-         return;
-     }
-     if (!fs::exists(mDestPath))
-     {
-         mStatus = INVALID_DEST_PATH;
-         return;
-     }
-     std::string desPath = mDestPath + mSrcPath.substr(mSrcPath.rfind("/"));
-     if (fs::exists(desPath) & !mOverwrite)
-     {
-         mStatus = FILE_ALREADY_EXISTS;
-         return;
-     }
-     if (fs::is_directory(mSrcPath))
-     {
-         if (!fs::exists(desPath))
-             fs::create_directories(desPath);
-         mDestPath = desPath;
-     }
+    try
+    {
+        if (!validateUSBPath(mSrcPath))
+        {
+            mStatus = INVALID_SOURCE_PATH;
+            return;
+        }
+        if (!validateUSBPath(mDestPath))
+        {
+            mStatus = INVALID_DEST_PATH;
+            return;
+        }
+        std::string desPath = mDestPath + mSrcPath.substr(mSrcPath.rfind("/"));
+        if (fs::exists(desPath) & !mOverwrite)
+        {
+            mStatus = FILE_ALREADY_EXISTS;
+            return;
+        }
+        if (fs::is_directory(mSrcPath))
+        {
+            if (!fs::exists(desPath))
+                fs::create_directories(desPath);
+            mDestPath = desPath;
+        }
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        mStatus = PERMISSION_DENIED;
+        return;
+    }
      mSrcSize = USBFolderContent(mSrcPath).getSize();
      mDestSize = USBFolderContent(mDestPath).getSize();
      std::async(std::launch::async, [this]()
          {
-             try {
+            try
+            {
                  auto copyOptions = fs::copy_options::recursive
                             | fs::copy_options::skip_symlinks;
                  if (this->mOverwrite)
@@ -187,14 +251,20 @@ void USBCopy::init()
                  fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
                  this->mStatus = SUCCESS;
              }
-             catch(fs::filesystem_error& e) {
-                 this->mStatus = INVALID_DEST_PATH;
+            catch(fs::filesystem_error& e)
+            {
+                LOG_DEBUG_SAF("%s", e.what());
+                this->mStatus = PERMISSION_DENIED;
              }
          });
 }
 
-std::uint32_t USBCopy::getStatus()
+std::int32_t USBCopy::getStatus()
 {
+    if(mStatus < 0)
+    {
+        return mStatus;
+    }
     uint32_t size = USBFolderContent(mDestPath).getSize();
     uint32_t change = (mSrcSize - size + mDestSize);
     if ((mStatus >= NO_ERROR) && (change > 0))
@@ -217,8 +287,9 @@ USBRemove::USBRemove(std::string path)
 
 void USBRemove::init()
 {
-    try {
-        if (fs::exists(mPath))
+    try
+    {
+        if (validateUSBPath(mPath))
         {
             fs::remove_all(mPath);
             mStatus = SUCCESS;
@@ -226,8 +297,10 @@ void USBRemove::init()
         else
             mStatus = INVALID_PATH;
     }
-    catch(fs::filesystem_error& e) {
-        mStatus = INVALID_PATH;
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        mStatus = PERMISSION_DENIED;
     }
 }
 
@@ -249,13 +322,14 @@ USBMove::USBMove(std::string srcPath, std::string destPath, bool overwrite)
 
 void USBMove::init()
 {
-    try {
-        if (!fs::exists(mSrcPath))
+    try
+    {
+        if (!validateUSBPath(mSrcPath))
         {
             mStatus = INVALID_SOURCE_PATH;
             return;
         }
-        if (!fs::exists(mDestPath))
+        if (!validateUSBPath(mDestPath))
         {
             mStatus = INVALID_DEST_PATH;
             return;
@@ -276,7 +350,8 @@ void USBMove::init()
         mDestSize = USBFolderContent(mDestPath).getSize();
         std::async(std::launch::async, [this]()
             {
-                try {
+                try
+                {
                     auto copyOptions = fs::copy_options::recursive
                                | fs::copy_options::skip_symlinks;
                     if (this->mOverwrite)
@@ -286,14 +361,18 @@ void USBMove::init()
                     fs::copy(this->mSrcPath, this->mDestPath, copyOptions);
                     this->mStatus = SUCCESS;
                 }
-                catch(fs::filesystem_error& e) {
-                    this->mStatus = INVALID_DEST_PATH;
+                catch(fs::filesystem_error& e)
+                {
+                    LOG_DEBUG_SAF("%s", e.what());
+                    this->mStatus = PERMISSION_DENIED;
                 }
             });
         fs::remove_all(mSrcPath);
     }
-    catch(fs::filesystem_error& e) {
-        mStatus = UNKNOWN;
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        mStatus = PERMISSION_DENIED;
     }
 }
 
@@ -323,16 +402,24 @@ void USBRename::init ()
 {
     try
     {
-        if (!fs::exists(mOldAbsPath))
+        if (!validateUSBPath(mOldAbsPath))
         {
             mStatus = INVALID_SOURCE_PATH;
             return;
         }
+        if (mNewAbsPath.empty() || (mNewAbsPath.find("/") != std::string::npos))
+        {
+            mStatus = INVALID_DEST_PATH;
+            return;
+        }
+        mNewAbsPath = mOldAbsPath.substr(0, mOldAbsPath.rfind("/") + 1) + mNewAbsPath;
         fs::rename(mOldAbsPath, mNewAbsPath);
         mStatus = SUCCESS;
     }
-    catch(fs::filesystem_error& e) {
-        mStatus = INVALID_DEST_PATH;
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        mStatus = PERMISSION_DENIED;
     }
 }
 
@@ -402,12 +489,20 @@ int32_t USBSpaceInfo::getStatus()
 std::string USBSpaceInfo::getLastModTime()
 {
     std::string timeStamp;
-    if (fs::exists(mPath))
+    try
     {
-        using namespace std::chrono_literals;
-        auto ftime = fs::last_write_time(mPath);
-        auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
-        timeStamp = ctime((time_t*)&timeMs);
+        if (fs::exists(mPath))
+        {
+            using namespace std::chrono_literals;
+            auto ftime = fs::last_write_time(mPath);
+            auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
+            timeStamp = ctime((time_t*)&timeMs);
+        }
+    }
+    catch(fs::filesystem_error& e)
+    {
+        LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
+        timeStamp.clear();
     }
     return timeStamp;
 }

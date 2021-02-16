@@ -107,7 +107,7 @@ private:
     void init();
 public:
     InternalCopy(std::string, std::string, bool);
-    std::uint32_t getStatus();
+    std::int32_t getStatus();
 };
 
 class InternalRemove

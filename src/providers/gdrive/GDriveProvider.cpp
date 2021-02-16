@@ -23,6 +23,11 @@ GDriveProvider::GDriveProvider() : mQuit(false), mCred(nullptr)
     LOG_DEBUG_SAF(" GDriveProvider::GDriveProvider : Constructor Created");
     mDispatcherThread = std::thread(std::bind(&GDriveProvider::dispatchHandler, this));
     mDispatcherThread.detach();
+    mAuthParam["access_token"]  = "";
+    mAuthParam["client_id"]  = "";
+    mAuthParam["client_secret"]  = "";
+    mAuthParam["refresh_token"]  = "";
+    mAuthParam["id_token"]  = "";
     insertMimeTypes();
 }
 
@@ -197,8 +202,7 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
     std::string path = reqData->params["path"].asString();
     int limit = reqData->params["limit"].asNumber<int>();
     int offset = reqData->params["offset"].asNumber<int>();
-    if (reqData->params.hasKey("refresh") && reqData->params["refresh"].asBool())
-        mGDriveOperObj.loadFileIds(mCred);
+    mGDriveOperObj.loadFileIds(mCred);
     if (mAuthParam["refresh_token"].empty())
     {
         respObj.put("returnValue", false);
@@ -292,7 +296,6 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
     FileGetRequest get = service.files().Get(path);
     get.add_field("userPermission");
     GFile file = get.execute();
-    mUser = file.get_userPermission().get_emailAddress();
     GAbout about = service.about().Get().execute();
     string username = about.get_name();
     long totalspace = about.get_quotaBytesTotal();
@@ -318,7 +321,18 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
-    std::string driveId = reqData->params["srcDriveId"].asString();
+    std::string srcPath = reqData->params["srcPath"].asString();
+    std::string destPath = reqData->params["destPath"].asString();
+    std::string srcStorageType = reqData->params["srcStorageType"].asString();
+    std::string destStorageType = reqData->params["destStorageType"].asString();
+    bool overwrite = reqData->params["overwrite"].asBool();
+    int status = 0;
+    std::string driveId = "";
+    if(srcStorageType == "CLOUD")
+        driveId = reqData->params["srcDriveId"].asString();
+    else
+        driveId = reqData->params["destDriveId"].asString();
+
     if(mUser != driveId)
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
@@ -326,15 +340,14 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    std::string srcPath = reqData->params["srcPath"].asString();
-    std::string destPath = reqData->params["destPath"].asString();
-    std::string srcStorageType = reqData->params["srcStorageType"].asString();
-    std::string destStorageType = reqData->params["destStorageType"].asString();
-    bool overwrite = reqData->params["overwrite"].asBool();
     if(reqData->params.hasKey("subscribe"))
         bool subscribe = reqData->params["subscribe"].asBool();
-    auto obj = InternalCreateDir(destPath);
-    if (mAuthParam["refresh_token"].empty() || (obj.getStatus() < 0))
+    if(destStorageType != "CLOUD")
+    {
+        auto obj = InternalCreateDir(destPath);
+        status = obj.getStatus();
+    }
+    if (mAuthParam["refresh_token"].empty() || (status < 0))
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
         respObj.put("returnValue", false);
@@ -446,7 +459,18 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
-    std::string driveId = reqData->params["srcDriveId"].asString();
+    std::string srcPath = reqData->params["srcPath"].asString();
+    std::string destPath = reqData->params["destPath"].asString();
+    std::string srcStorageType = reqData->params["srcStorageType"].asString();
+    std::string destStorageType = reqData->params["destStorageType"].asString();
+    bool overwrite = reqData->params["overwrite"].asBool();
+    int status = 0;
+    std::string driveId = "";
+    if(srcStorageType == "CLOUD")
+        driveId = reqData->params["srcDriveId"].asString();
+    else
+        driveId = reqData->params["destDriveId"].asString();
+
     if(mUser != driveId)
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
@@ -454,16 +478,14 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    std::string srcPath = reqData->params["srcPath"].asString();
-    std::string destPath = reqData->params["destPath"].asString();
-    std::string srcStorageType = reqData->params["srcStorageType"].asString();
-    std::string destStorageType = reqData->params["destStorageType"].asString();
-    bool overwrite = reqData->params["overwrite"].asBool();
     if(reqData->params.hasKey("subscribe"))
         bool subscribe = reqData->params["subscribe"].asBool();
-
-    auto obj = InternalCreateDir(destPath);
-    if (mAuthParam["refresh_token"].empty() || (obj.getStatus() < 0))
+    if(destStorageType != "CLOUD")
+    {
+        auto obj = InternalCreateDir(destPath);
+        status = obj.getStatus();
+    }
+    if (mAuthParam["refresh_token"].empty() || (status < 0))
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
         respObj.put("returnValue", false);
@@ -665,7 +687,7 @@ void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
     {
         pbnjson::JValue gdriveRes = pbnjson::Object();
         gdriveRes.put("storageName", "GDRIVE");
-        gdriveRes.put("driverId", mUser);
+        gdriveRes.put("driveId", mUser);
         gdriveRes.put("path", "/");
         gdriveResArr.append(gdriveRes);
     }

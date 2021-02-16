@@ -303,16 +303,16 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
 
     int retStatus = -1;
     int prevStatus = -20;
+    pbnjson::JValue respObj = pbnjson::Object();
     while(1)
     {
         retStatus = copyPtr->getStatus();
         LOG_DEBUG_SAF("%s: statussss : %d", __FUNCTION__, retStatus);
         bool status = (retStatus < 0)?(false):(true);
-        pbnjson::JValue respObj = pbnjson::Object();
         respObj.put("returnValue", status);
         if (status)
         {
-            respObj.put("status(%)", retStatus);
+            respObj.put("progress", retStatus);
         }
         else
         {
@@ -388,7 +388,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", status);
         if (status)
         {
-            respObj.put("status(%)", retStatus);
+            respObj.put("progress", retStatus);
         }
         else
         {

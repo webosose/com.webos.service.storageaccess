@@ -32,6 +32,7 @@ enum USBOperErrors
 };
 
 int getUSBErrorCode(int errorCode);
+bool validateUSBPath(std::string&);
 
 class USBFolderContent
 {
@@ -39,17 +40,22 @@ private:
     std::string mName;
     std::string mPath;
     std::string mType;
+    std::string mModTime;
     uint32_t mSize;
 
     void init();
     std::string getFileType(std::string);
+    std::string getLastWrite(std::string);
     uint32_t getFileSize(std::string);
+    std::string getModTime();
+
 public:
     USBFolderContent(std::string);
     std::string getName() { return mName; }
     std::string getPath() { return mPath; }
     std::string getType() { return mType; }
     uint32_t getSize() { return mSize; }
+    std::string getLastModTime() { return mModTime; }
 };
 
 class USBFolderContents
@@ -77,13 +83,13 @@ private:
     std::string mDestPath;
     uint32_t mSrcSize;
     uint32_t mDestSize;
-    uint32_t mStatus;
+    int32_t mStatus;
     bool mOverwrite;
     std::string mErrMsg;
     void init();
 public:
     USBCopy(std::string, std::string, bool);
-    std::uint32_t getStatus();
+    std::int32_t getStatus();
     std::string getErrorMsg();
 };
 
