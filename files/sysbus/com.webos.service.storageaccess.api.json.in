@@ -1,13 +1,13 @@
 {
     "storageaccess.operation": [
-        "com.webos.service.storageaccess/attachCloud",
-        "com.webos.service.storageaccess/authenticateCloud",
-        "com.webos.service.storageaccess/listFolderContents",
-        "com.webos.service.storageaccess/getProperties",
-        "com.webos.service.storageaccess/listOfStorages",
-        "com.webos.service.storageaccess/copy",
-        "com.webos.service.storageaccess/move",
-        "com.webos.service.storageaccess/remove",
-        "com.webos.service.storageaccess/eject"
+        "com.webos.service.storageaccess/listStorageProviders",
+        "com.webos.service.storageaccess/device/handleExtraCommand",
+        "com.webos.service.storageaccess/device/list",
+        "com.webos.service.storageaccess/device/getProperties",
+        "com.webos.service.storageaccess/device/copy",
+        "com.webos.service.storageaccess/device/move",
+        "com.webos.service.storageaccess/device/remove",
+        "com.webos.service.storageaccess/device/rename",
+        "com.webos.service.storageaccess/device/eject"
     ]
 }

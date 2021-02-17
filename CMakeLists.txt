@@ -22,7 +22,7 @@ add_definitions(-DNOT_SUPPORT_GFLAGS)
 include(webOS/webOS)
 
 webos_modules_init(1 0 0 QUALIFIER RC4)
-webos_component(0 0 1)
+webos_component(1 0 0)
 
 option (USE_PMLOG "Enable PmLogLib logging" ON)
 
