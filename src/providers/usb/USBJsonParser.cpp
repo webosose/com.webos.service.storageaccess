@@ -124,7 +124,10 @@ pbnjson::JValue USBPbnJsonParser::ParseGetProperties(pbnjson::JValue rootObj, st
         else if(eachObj.hasKey("spaceInfo"))
         {
             pbnjson::JValue infoObj = eachObj["spaceInfo"];
-            respObj.put("totalSpace", infoObj["totalSize"]);
+            if(infoObj.hasKey("totalSize"))
+                respObj.put("totalSpace", infoObj["totalSize"]);
+            if(infoObj.hasKey("driveSize"))
+                respObj.put("totalSpace", infoObj["driveSize"]);
             respObj.put("freeSpace",  infoObj["freeSize"]);
         }
     }
