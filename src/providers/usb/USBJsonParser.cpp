@@ -60,7 +60,7 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
     LOG_DEBUG_SAF("Number of USB devices attached:%d", numUSBDevices);
     if(numUSBDevices == 0)
     {
-        responseObj.put("USB", responseArray);
+        responseObj.put("usb", responseArray);
         return responseObj;
     }
     if(ret)
@@ -74,7 +74,7 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
                 {
                     pbnjson::JValue rObj = pbnjson::Object();
                     if(usbArray[i]["storageDriveList"][j].hasKey("driveName"))
-                        rObj.put("storageName", usbArray[i]["storageDriveList"][j]["driveName"]);
+                        rObj.put("driveName", usbArray[i]["storageDriveList"][j]["driveName"]);
                     if(usbArray[i]["storageDriveList"][j].hasKey("uuid"))
                         sid = usbArray[i]["serialNumber"].asString() + "-" + usbArray[i]["storageDriveList"][j]["uuid"].asString();
                         rObj.put("driveId", sid);
@@ -87,7 +87,7 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
                 }
             }
         }
-        responseObj.put("USB", responseArray);
+        responseObj.put("usb", responseArray);
     }
     return responseObj;
 }

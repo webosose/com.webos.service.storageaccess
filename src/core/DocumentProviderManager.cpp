@@ -24,7 +24,7 @@ DocumentProviderManager::~DocumentProviderManager()
 void DocumentProviderManager::addRequest(std::shared_ptr<RequestData>& reqData)
 {
     if(((reqData->methodType == MethodType::COPY_METHOD) || (reqData->methodType == MethodType::MOVE_METHOD))
-        && (reqData->storageType != StorageType::GDRIVE) && (reqData->params["destStorageType"].asString() == "CLOUD"))
+        && (reqData->storageType != StorageType::GDRIVE) && (reqData->params["destStorageType"].asString() == "cloud"))
     {
         reqData->storageType = StorageType::GDRIVE;
     }

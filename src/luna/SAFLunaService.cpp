@@ -109,7 +109,8 @@ void SAFLunaService::onHandleExtraCommandReply(pbnjson::JValue rootObj, std::sha
     pbnjson::JValue responseObj = pbnjson::Object();
     responseObj.put("returnValue", rootObj["returnValue"]);
     pbnjson::JValue responsePayload = pbnjson::Array();
-    responsePayload.append(rootObj["response"]);
+    if(rootObj.hasKey("response"))
+        responsePayload.append(rootObj["response"]);
     responseObj.put("responsePayload", responsePayload);
     LSUtils::postToClient(subs->getMessage(), rootObj);
 }
@@ -264,7 +265,7 @@ bool SAFLunaService::listStorageProviders(LSMessage &message)
     {
         if(*itr == StorageType::USB)
         {
-            requestObj.put("storageType","USB");
+            requestObj.put("storageType","usb");
         }
     }
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
@@ -282,10 +283,11 @@ void SAFLunaService::onListOfStoragesReply(pbnjson::JValue rootObj, std::shared_
     StorageType type = getStorageDeviceType(rootObj);
     if(type == StorageType::USB)
     {
-        respObj = rootObj["response"];
+        if(rootObj.hasKey("response"))
+            respObj = rootObj["response"];
         pbnjson::JValue providerRespArray = pbnjson::Array();
         providerRespArray.append(respObj);
-        rootObj.put("storageType","INTERNAL");
+        rootObj.put("storageType","internal");
         rootObj.put("listStorageResponse",providerRespArray);
         std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
         REQUEST_BUILDER(reqData, MethodType::LIST_STORAGES_METHOD, rootObj, SAFLunaService::onListOfStoragesReply);
@@ -293,9 +295,12 @@ void SAFLunaService::onListOfStoragesReply(pbnjson::JValue rootObj, std::shared_
     }
     else if(type == StorageType::INTERNAL)
     {
-        rootObj.put("storageType","CLOUD");
-        pbnjson::JValue providerRespArray = rootObj["listStorageResponse"];
-        providerRespArray.append(rootObj["response"]);
+        rootObj.put("storageType","cloud");
+        pbnjson::JValue providerRespArray;
+        if(rootObj.hasKey("listStorageResponse"))
+            providerRespArray = rootObj["listStorageResponse"];
+        if(rootObj.hasKey("response"))
+            providerRespArray.append(rootObj["response"]);
         rootObj.put("listStorageResponse",providerRespArray);
         std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
         REQUEST_BUILDER(reqData, MethodType::LIST_STORAGES_METHOD, rootObj, SAFLunaService::onListOfStoragesReply);
@@ -303,8 +308,11 @@ void SAFLunaService::onListOfStoragesReply(pbnjson::JValue rootObj, std::shared_
     }
     else if (type == StorageType::GDRIVE)
     {
-        pbnjson::JValue providerRespArray = rootObj["listStorageResponse"];
-        providerRespArray.append(rootObj["response"]);
+        pbnjson::JValue providerRespArray;
+        if(rootObj.hasKey("listStorageResponse"))
+            providerRespArray = rootObj["listStorageResponse"];
+        if(rootObj.hasKey("response"))
+            providerRespArray.append(rootObj["response"]);
         pbnjson::JValue responseObj = pbnjson::Object();
         responseObj.put("returnValue", true);
         responseObj.put("storageProviders", providerRespArray);
@@ -542,7 +550,7 @@ void SAFLunaService::onEjectReply(pbnjson::JValue rootObj, std::shared_ptr<LSUti
     pbnjson::JValue respObj;
     if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
     {
-        reqObj.put("storageType","USB"); //for USB storageType
+        reqObj.put("storageType","usb"); //for USB storageType
         StorageType type = getStorageDeviceType(reqObj);
         if (type == StorageType::USB)
         {
@@ -630,11 +638,11 @@ StorageType SAFLunaService::getStorageDeviceType(pbnjson::JValue jsonObj)
         && jsonObj["srcStorageType"].isString())
         type = jsonObj["srcStorageType"].asString();
 
-    if(type == "INTERNAL")
+    if(type == "internal")
         storageType = StorageType::INTERNAL;
-    else if(type == "USB")
+    else if(type == "usb")
         storageType = StorageType::USB;
-    else if(type == "CLOUD")
+    else if(type == "cloud")
         storageType = StorageType::GDRIVE;
     else
         LOG_DEBUG_SAF("getStorageDeviceType : Invalid storageType");
@@ -644,11 +652,11 @@ StorageType SAFLunaService::getStorageDeviceType(pbnjson::JValue jsonObj)
 StorageType SAFLunaService::getStorageDeviceType(std::string type)
 {
     StorageType storageType = StorageType::INVALID;
-    if(type == "INTERNAL")
+    if(type == "internal")
         storageType = StorageType::INTERNAL;
-    else if(type == "USB")
+    else if(type == "usb")
         storageType = StorageType::USB;
-    else if(type == "CLOUD")
+    else if(type == "cloud")
         storageType = StorageType::GDRIVE;
     else
         LOG_DEBUG_SAF("getStorageDeviceType : Invalid storageType");

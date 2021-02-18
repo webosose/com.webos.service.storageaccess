@@ -319,11 +319,11 @@ void InternalStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> re
     pbnjson::JValue respObj = pbnjson::Object();
     pbnjson::JValue internalResArr = pbnjson::Array();
     pbnjson::JValue internalRes = pbnjson::Object();
-    internalRes.put("storageName", "INTERNAL");
+    internalRes.put("driveName", "INTERNAL");
     internalRes.put("driveId", DEFAULT_INTERNAL_STORAGE_ID);
     internalRes.put("path", DEFAULT_INTERNAL_PATH);
     internalResArr.append(internalRes);
-    respObj.put("INTERNAL", internalResArr);
+    respObj.put("internal", internalResArr);
     reqData->params.put("response", respObj);
     reqData->cb(reqData->params, std::move(reqData->subs));
     return;

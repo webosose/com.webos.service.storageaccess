@@ -62,7 +62,6 @@ public:
     void listStoragesMethod(std::shared_ptr<RequestData>);
     void getPropertiesMethod(std::shared_ptr<RequestData>);
     void ejectMethod(std::shared_ptr<RequestData>);
-    void formatMethod(std::shared_ptr<RequestData>);
     void copyMethod(std::shared_ptr<RequestData>);
     void moveMethod(std::shared_ptr<RequestData>);
     void removeMethod(std::shared_ptr<RequestData>);

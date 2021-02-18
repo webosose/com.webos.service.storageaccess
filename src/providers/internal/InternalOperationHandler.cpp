@@ -77,13 +77,13 @@ void FolderContent::init()
 
 std::string FolderContent::getFileType(std::string filePath)
 {
-    std::string type = "UNKNOWN";
+    std::string type = "unknown";
     try
     {
-        if (!validateInternalPath(filePath)) type = "UNKNOWN";
-        else if (fs::is_regular_file(filePath)) type = "REGULAR";
-        else if (fs::is_symlink(filePath)) type = "LINKFILE";
-        else if (fs::is_directory(filePath)) type = "DIRECTORY";
+        if (!validateInternalPath(filePath)) type = "unknown";
+        else if (fs::is_regular_file(filePath)) type = "regular";
+        else if (fs::is_symlink(filePath)) type = "linkfile";
+        else if (fs::is_directory(filePath)) type = "directory";
 #if 0
         if (!fs::exists(filePath)) type = "unavailable";
         else if (fs::is_block_file(filePath)) type = "block";
@@ -97,7 +97,7 @@ std::string FolderContent::getFileType(std::string filePath)
     catch(fs::filesystem_error& e)
     {
         LOG_DEBUG_SAF("%s: %s", __FUNCTION__, e.what());
-        type = "UNKNOWN";
+        type = "unknown";
     }
     return type;
 }

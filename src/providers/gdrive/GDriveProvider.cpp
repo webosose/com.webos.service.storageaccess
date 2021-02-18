@@ -175,6 +175,9 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
         responsePayObjArr.append(responsePayObj);
         respObj.put("returnValue", true);
         respObj.put("responsePayload", responsePayObjArr);
+        reqData->cb(respObj, reqData->subs);
+        mGDriveOperObj.loadFileIds(mCred);
+        return;
     }
     else
     {
@@ -183,7 +186,6 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
         respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_URL));
     }
     reqData->cb(respObj, reqData->subs);
-    mGDriveOperObj.loadFileIds(mCred);
 }
 
 void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
@@ -202,7 +204,6 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
     std::string path = reqData->params["path"].asString();
     int limit = reqData->params["limit"].asNumber<int>();
     int offset = reqData->params["offset"].asNumber<int>();
-    mGDriveOperObj.loadFileIds(mCred);
     if (mAuthParam["refresh_token"].empty())
     {
         respObj.put("returnValue", false);
@@ -211,6 +212,7 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
+    mGDriveOperObj.loadFileIds(mCred);
     std::string folderpathId = mGDriveOperObj.getFileId(path);
     if (!folderpathId.empty())
     {
@@ -305,7 +307,7 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("==>FreeSpace:%ld", freespace);
     pbnjson::JValue attributesArr = pbnjson::Array();
     respObj.put("returnValue", true);
-    respObj.put("storageType", "CLOUD");
+    respObj.put("storageType", "cloud");
     respObj.put("writable", true);
     respObj.put("deletable", true);
     if (path == "root")
@@ -326,9 +328,8 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
     std::string srcStorageType = reqData->params["srcStorageType"].asString();
     std::string destStorageType = reqData->params["destStorageType"].asString();
     bool overwrite = reqData->params["overwrite"].asBool();
-    int status = 0;
     std::string driveId = "";
-    if(srcStorageType == "CLOUD")
+    if(srcStorageType == "cloud")
         driveId = reqData->params["srcDriveId"].asString();
     else
         driveId = reqData->params["destDriveId"].asString();
@@ -342,12 +343,7 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
     }
     if(reqData->params.hasKey("subscribe"))
         bool subscribe = reqData->params["subscribe"].asBool();
-    if(destStorageType != "CLOUD")
-    {
-        auto obj = InternalCreateDir(destPath);
-        status = obj.getStatus();
-    }
-    if (mAuthParam["refresh_token"].empty() || (status < 0))
+    if (mAuthParam["refresh_token"].empty())
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
         respObj.put("returnValue", false);
@@ -359,9 +355,9 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
     std::string srcFileID = mGDriveOperObj.getFileId(srcPath);
     std::string destFileId = mGDriveOperObj.getFileId(destPath);
     Drive service(mCred.get());
-    if (destStorageType== "CLOUD")
+    if (destStorageType== "cloud")
     {
-        if (srcStorageType == "CLOUD")
+        if (srcStorageType == "cloud")
         {
             if (!srcFileID.empty())
             {
@@ -378,6 +374,9 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
                 service.files().Copy(srcFileID, movedFile).execute();
                 respObj.put("returnValue", true);
                 respObj.put("progress", 100);
+                reqData->cb(respObj, reqData->subs);
+                mGDriveOperObj.loadFileIds(mCred);
+                return;
             }
             else
             {
@@ -425,10 +424,29 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
             fin.close();
             respObj.put("returnValue", true);
             respObj.put("progress", 100);
+            reqData->cb(respObj, reqData->subs);
+            mGDriveOperObj.loadFileIds(mCred);
+            return;
         }
     }
     else
     {
+        if (srcFileID.empty())
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
+            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_SOURCE_PATH));
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+        else if (!validateInternalPath(destPath))
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorCode", SAFErrors::INVALID_DEST_PATH);
+            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_DEST_PATH));
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
         destPath = destPath + srcPath.substr(srcPath.rfind("/"));
                 LOG_DEBUG_SAF(" DEST is NOT Cloud %s", destPath.c_str());
         GFile downloadFile = service.files().Get(srcFileID).execute();
@@ -450,9 +468,11 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
         fout.close();
         respObj.put("returnValue", true);
         respObj.put("progress", 100);
+        reqData->cb(respObj, reqData->subs);
+        mGDriveOperObj.loadFileIds(mCred);
+        return;
     }
     reqData->cb(respObj, reqData->subs);
-    mGDriveOperObj.loadFileIds(mCred);
 }
 
 void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
@@ -464,9 +484,8 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
     std::string srcStorageType = reqData->params["srcStorageType"].asString();
     std::string destStorageType = reqData->params["destStorageType"].asString();
     bool overwrite = reqData->params["overwrite"].asBool();
-    int status = 0;
     std::string driveId = "";
-    if(srcStorageType == "CLOUD")
+    if(srcStorageType == "cloud")
         driveId = reqData->params["srcDriveId"].asString();
     else
         driveId = reqData->params["destDriveId"].asString();
@@ -480,12 +499,7 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
     }
     if(reqData->params.hasKey("subscribe"))
         bool subscribe = reqData->params["subscribe"].asBool();
-    if(destStorageType != "CLOUD")
-    {
-        auto obj = InternalCreateDir(destPath);
-        status = obj.getStatus();
-    }
-    if (mAuthParam["refresh_token"].empty() || (status < 0))
+    if (mAuthParam["refresh_token"].empty())
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
         respObj.put("returnValue", false);
@@ -497,9 +511,9 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
     std::string srcFileID = mGDriveOperObj.getFileId(srcPath);
     std::string destFileId = mGDriveOperObj.getFileId(destPath);
     Drive service(mCred.get());
-    if (destStorageType== "CLOUD")
+    if (destStorageType== "cloud")
     {
-        if (srcStorageType == "CLOUD")
+        if (srcStorageType == "cloud")
          {
             if (!srcFileID.empty())
             {
@@ -517,6 +531,9 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
                 service.files().Delete(srcFileID).execute();
                 respObj.put("returnValue", true);
                 respObj.put("progress", 100);
+                reqData->cb(respObj, reqData->subs);
+                mGDriveOperObj.loadFileIds(mCred);
+                return;
             }
             else
             {
@@ -564,10 +581,29 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
             respObj.put("progress", 100);
             auto intObj = InternalRemove(srcPath);
             (void)intObj;
+            reqData->cb(respObj, reqData->subs);
+            mGDriveOperObj.loadFileIds(mCred);
+	    return;
         }
     }
     else
     {
+        if (srcFileID.empty())
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
+            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_SOURCE_PATH));
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+        else if (!validateInternalPath(destPath))
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorCode", SAFErrors::INVALID_DEST_PATH);
+            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_DEST_PATH));
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
         destPath = destPath + srcPath.substr(srcPath.rfind("/"));
         LOG_DEBUG_SAF(" DEST is NOT Cloud %s", destPath.c_str());
         GFile downloadFile = service.files().Get(srcFileID).execute();
@@ -590,9 +626,11 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
         service.files().Delete(srcFileID).execute();
         respObj.put("returnValue", true);
         respObj.put("progress", 100);
+        reqData->cb(respObj, reqData->subs);
+        mGDriveOperObj.loadFileIds(mCred);
+        return;
     }
     reqData->cb(respObj, reqData->subs);
-    mGDriveOperObj.loadFileIds(mCred);
 }
 
 void GDriveProvider::remove(std::shared_ptr<RequestData> reqData)
@@ -626,6 +664,9 @@ void GDriveProvider::remove(std::shared_ptr<RequestData> reqData)
         service.files().Delete(fileId).execute();
         respObj.put("returnValue", true);
         respObj.put("status", "File Deleted");
+        reqData->cb(respObj, reqData->subs);
+        mGDriveOperObj.loadFileIds(mCred);
+        return;
     }
     else
     {
@@ -634,7 +675,6 @@ void GDriveProvider::remove(std::shared_ptr<RequestData> reqData)
         respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_PATH));
     }
     reqData->cb(respObj, reqData->subs);
-    mGDriveOperObj.loadFileIds(mCred);
 }
 
 void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
@@ -666,7 +706,10 @@ void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
         Drive service(mCred.get());
         service.files().Patch(fileId, &patchFile).execute();
         respObj.put("returnValue", true);
-        respObj.put("staus", "File Renamed");
+        respObj.put("status", "File Renamed");
+        reqData->cb(respObj, reqData->subs);
+        mGDriveOperObj.loadFileIds(mCred);
+        return;
     }
     else
     {
@@ -675,7 +718,6 @@ void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
         respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_PATH));
     }
     reqData->cb(respObj, reqData->subs);
-    mGDriveOperObj.loadFileIds(mCred);
 }
 
 void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
@@ -686,12 +728,12 @@ void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
     if (!mAuthParam["refresh_token"].empty())
     {
         pbnjson::JValue gdriveRes = pbnjson::Object();
-        gdriveRes.put("storageName", "GDRIVE");
+        gdriveRes.put("driveName", "GDRIVE");
         gdriveRes.put("driveId", mUser);
         gdriveRes.put("path", "/");
         gdriveResArr.append(gdriveRes);
     }
-    respObj.put("CLOUD", gdriveResArr);
+    respObj.put("cloud", gdriveResArr);
     reqData->params.put("response", respObj);
     reqData->cb(reqData->params, std::move(reqData->subs));
 }
@@ -740,11 +782,11 @@ string GDriveProvider::getMimeType(std::string fileType) {
 }
 
 string GDriveProvider::getFileType(std::string mimeType) {
-    std::string fileType = "UNKNOWN";
+    std::string fileType = "unknown";
     if(mimeType.rfind("folder") != std::string::npos)
-        fileType = "DIRECTORY";
+        fileType = "directory";
     else if(!mimeType.empty())
-        fileType = "REGULAR";
+        fileType = "regular";
     return fileType;
 }
 

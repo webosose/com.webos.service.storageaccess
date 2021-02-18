@@ -184,7 +184,7 @@ bool USBStorageProvider::onListStoragesMethodReply(LSHandle *sh, LSMessage *mess
         USBPbnJsonParser usbParser;
         pbnjson::JValue responseObj = usbParser.ParseListOfStorages(root);
         ctxPtr->reqData->params.put("response", responseObj);
-        ctxPtr->reqData->params.put("storageType","USB");
+        ctxPtr->reqData->params.put("storageType","usb");
         ctxPtr->reqData->cb(ctxPtr->reqData->params, ctxPtr->reqData->subs);
     }
     return true;
@@ -234,28 +234,6 @@ void USBStorageProvider::ejectMethod(std::shared_ptr<RequestData> data)
                 USBStorageProvider::onReply, ctxPtr, NULL, &lserror);
 }
 
-void USBStorageProvider::formatMethod(std::shared_ptr<RequestData> data)
-{
-    LOG_DEBUG_SAF("%s", __FUNCTION__);
-    std::string uri = SAF_USB_FORMAT_METHOD;
-    std::string payload = "{\"driveName\": \"" + data->params["storageName"].asString() + "\"}";
-    LSError lserror;
-    (void)LSErrorInit(&lserror);
-    ReqContext *ctxPtr = new ReqContext();
-    ctxPtr->ctx = this;
-    ctxPtr->reqData = std::move(data);
-
-    pbnjson::JValue nextReqArray = pbnjson::Array();
-    pbnjson::JValue nextObj = pbnjson::Object();
-
-    nextObj.put("uri", uri);
-    nextObj.put("payload", payload);
-    nextReqArray.append(nextObj);
-    LOG_DEBUG_SAF("LS Call:%s and Payload:%s", uri.c_str(), payload.c_str());
-    LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),
-                USBStorageProvider::onReply, ctxPtr, NULL, &lserror);
-}
-
 void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
@@ -271,7 +249,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
         return;
     }
 
-    if(reqData->params["destStorageType"] == "USB")
+    if(reqData->params["destStorageType"] == "usb")
     {
         if(isStorageIdExists(reqData->params["destDriveId"].asString()) == false)
         {
@@ -285,7 +263,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
     }
 
     if(!isStorageDriveMounted(reqData->params["srcDriveId"].asString()) ||
-       (reqData->params["destStorageType"] == "USB" && !isStorageDriveMounted(reqData->params["destDriveId"].asString())))
+       (reqData->params["destStorageType"] == "usb" && !isStorageDriveMounted(reqData->params["destDriveId"].asString())))
     {
         pbnjson::JValue respObj = pbnjson::Object();
         respObj.put("returnValue", false);
@@ -347,7 +325,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
         return;
     }
 
-    if(reqData->params["destStorageType"] == "USB")
+    if(reqData->params["destStorageType"] == "usb")
     {
         if(isStorageIdExists(reqData->params["destDriveId"].asString()) == false)
         {
@@ -361,7 +339,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
     }
 
     if(!isStorageDriveMounted(reqData->params["srcDriveId"].asString()) ||
-       (reqData->params["destStorageType"] == "USB" && !isStorageDriveMounted(reqData->params["destDriveId"].asString())))
+       (reqData->params["destStorageType"] == "usb" && !isStorageDriveMounted(reqData->params["destDriveId"].asString())))
     {
         pbnjson::JValue respObj = pbnjson::Object();
         respObj.put("returnValue", false);
