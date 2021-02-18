@@ -1,0 +1,13 @@
+[Unit]
+Description=webos - "%n"
+ConditionUser=!root
+Requires=ls-hubd.service
+After=ls-hubd.service
+
+[Service]
+Type=dynamic
+OOMScoreAdjust=-500
+EnvironmentFile=-/var/systemd/system/env/com.webos.service.storageaccess.env
+Environment=CHARSET=UTF-8
+ExecStart=/usr/sbin/storageaccess
+Restart=on-failure

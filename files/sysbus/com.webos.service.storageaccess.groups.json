@@ -1,0 +1,5 @@
+{
+
+        "allowedNames" : ["com.webos.service.storageaccess"],
+        "storageaccess.operation": ["oem"]
+}

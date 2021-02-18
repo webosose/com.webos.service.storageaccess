@@ -1,0 +1,7 @@
+{
+    "com.webos.service.storageaccess": [
+        "physicaldevice.query",
+        "physicaldevice.management"
+    ]
+}
+
