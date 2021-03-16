@@ -47,7 +47,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
     LOG_DEBUG_SAF("%s", __FUNCTION__);
     LSError lserror;
     (void)LSErrorInit(&lserror);
-    ReqContext *ctxPtr = new ReqContext();
+    std::shared_ptr<ReqContext> ctxPtr = std::make_shared<ReqContext>();
     ctxPtr->ctx = this;
     ctxPtr->reqData = std::move(data);
 
@@ -139,7 +139,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
         nextReqArray.append(spaceObj);
 
         ctxPtr->reqData->params.put("nextReq", nextReqArray);
-        LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),USBStorageProvider::onGetPropertiesReply, ctxPtr, NULL, &lserror);
+        LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),USBStorageProvider::onGetPropertiesReply, ctxPtr.get(), NULL, &lserror);
     }
 }
 
@@ -150,7 +150,7 @@ void USBStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> data)
     std::string payload = R"({"subscribe": true})";
     LSError lserror;
     (void)LSErrorInit(&lserror);
-    ReqContext *ctxPtr = new ReqContext();
+    std::shared_ptr<ReqContext> ctxPtr = std::make_shared<ReqContext>();
     ctxPtr->ctx = this;
     ctxPtr->reqData = std::move(data);
 
@@ -162,7 +162,7 @@ void USBStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> data)
     nextReqArray.append(nextObj);
 
     LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),
-                USBStorageProvider::onListStoragesMethodReply, ctxPtr, NULL, &lserror);
+                USBStorageProvider::onListStoragesMethodReply, ctxPtr.get(), NULL, &lserror);
 }
 
 
@@ -219,7 +219,7 @@ void USBStorageProvider::ejectMethod(std::shared_ptr<RequestData> data)
     std::string payload = "{\"deviceNum\": " + std::to_string(getStorageNumber(driveId)) + "}";
     LSError lserror;
     (void)LSErrorInit(&lserror);
-    ReqContext *ctxPtr = new ReqContext();
+    std::shared_ptr<ReqContext> ctxPtr = std::make_shared<ReqContext>();
     ctxPtr->ctx = this;
     ctxPtr->reqData = std::move(data);
 
@@ -231,7 +231,7 @@ void USBStorageProvider::ejectMethod(std::shared_ptr<RequestData> data)
     nextReqArray.append(nextObj);
     LOG_DEBUG_SAF("LS Call:%s and Payload:%s", uri.c_str(), payload.c_str());
     LSCall(SAFLunaService::lsHandle, uri.c_str(), payload.c_str(),
-                USBStorageProvider::onReply, ctxPtr, NULL, &lserror);
+                USBStorageProvider::onReply, ctxPtr.get(), NULL, &lserror);
 }
 
 void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
