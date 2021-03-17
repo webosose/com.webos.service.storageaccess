@@ -41,8 +41,10 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
                 if(replyObj["deviceListInfo"][0].hasKey("storageDeviceList"))
                 {
                     if(replyObj["deviceListInfo"][0]["storageDeviceList"].isArray())
+                    {
                         usbArray = replyObj["deviceListInfo"][0]["storageDeviceList"];
                         numUSBDevices = usbArray.arraySize();
+                    }
                 }
             }
         }
@@ -76,9 +78,11 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
                     if(usbArray[i]["storageDriveList"][j].hasKey("driveName"))
                         rObj.put("driveName", usbArray[i]["storageDriveList"][j]["driveName"]);
                     if(usbArray[i]["storageDriveList"][j].hasKey("uuid"))
+                    {
                         sid = usbArray[i]["serialNumber"].asString() + "-" + usbArray[i]["storageDriveList"][j]["uuid"].asString();
                         rObj.put("driveId", sid);
                         sid = "";
+                    }
                     if(usbArray[i]["storageDriveList"][j].hasKey("fsType"))
                         rObj.put("fileSystem", usbArray[i]["storageDriveList"][j]["fsType"]);
                     if(usbArray[i]["storageDriveList"][j].hasKey("mountName"))
