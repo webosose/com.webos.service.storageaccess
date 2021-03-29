@@ -266,6 +266,7 @@ std::int32_t USBCopy::getStatus()
         return mStatus;
     }
     uint32_t size = USBFolderContent(mDestPath).getSize();
+    mDestSize = size;
     uint32_t change = (mSrcSize - size + mDestSize);
     if ((mStatus >= NO_ERROR) && (change > 0))
         mStatus = int(change / mSrcSize * 100);
@@ -379,6 +380,7 @@ void USBMove::init()
 int32_t USBMove::getStatus()
 {
     uint32_t size = USBFolderContent(mDestPath).getSize();
+    mDestSize = size;
     uint32_t change = (mSrcSize - size + mDestSize);
     if ((mStatus >= NO_ERROR) && (change > 0))
         mStatus = int(change / mSrcSize * 100);
