@@ -1,4 +1,4 @@
-# Copyright (c) 2020 LG Electronics, Inc.
+# Copyright (c) 2020-2021 LG Electronics, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -77,7 +77,15 @@ set(LIBS
     -Wl,--no-undefined
     )
 
-set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs)
+# cmake static library selection
+if(WEBOS_TARGET_DISTRO STREQUAL "webos")
+    if(WEBOS_TARGET_MACHINE STREQUAL "raspberrypi4")
+        set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs_OSE)
+    elseif(WEBOS_TARGET_MACHINE STREQUAL "qemux86")
+        set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs_Emulator)
+    endif()
+endif()
+
 target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}  ${GDRIVE_LIBS}/libjconer.a ${GDRIVE_LIBS}/libgdrive.a)
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
