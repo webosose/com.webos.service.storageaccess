@@ -78,7 +78,7 @@ set(LIBS
     )
 
 # cmake static library selection
-if(WEBOS_TARGET_DISTRO STREQUAL "webos")
+if(WEBOS_TARGET_DISTRO STREQUAL "webos" OR WEBOS_TARGET_DISTRO STREQUAL "webos-pro")
     if(WEBOS_TARGET_MACHINE STREQUAL "raspberrypi4")
         set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs_OSE)
     elseif(WEBOS_TARGET_MACHINE STREQUAL "qemux86")
