@@ -77,16 +77,8 @@ set(LIBS
     -Wl,--no-undefined
     )
 
-# cmake static library selection
-if(WEBOS_TARGET_DISTRO STREQUAL "webos" OR WEBOS_TARGET_DISTRO STREQUAL "webos-pro")
-    if(WEBOS_TARGET_MACHINE STREQUAL "raspberrypi4")
-        set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs_OSE)
-    elseif(WEBOS_TARGET_MACHINE STREQUAL "qemux86")
-        set(GDRIVE_LIBS ${CMAKE_SOURCE_DIR}/src/providers/gdrive/libs_Emulator)
-    endif()
-endif()
 
-target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}  ${GDRIVE_LIBS}/libjconer.a ${GDRIVE_LIBS}/libgdrive.a)
+target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}   ${CMAKE_SOURCE_DIR}/libgdrive/lib/libjconer.a ${CMAKE_SOURCE_DIR}/libgdrive/libgdrive.a)
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
 
