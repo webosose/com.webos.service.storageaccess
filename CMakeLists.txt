@@ -67,6 +67,8 @@ file(GLOB SAF_SOURCE
 add_executable(${CMAKE_PROJECT_NAME} ${SAF_SOURCE})
 
 set(LIBS
+    libjconer.a
+    libgdrive.a
     ${LS2_LDFLAGS}
     ${GLIB2_LDFLAGS}
     ${PMLOGLIB_LDFLAGS}
@@ -77,8 +79,7 @@ set(LIBS
     -Wl,--no-undefined
     )
 
-
-target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS}   ${CMAKE_SOURCE_DIR}/libgdrive/lib/libjconer.a ${CMAKE_SOURCE_DIR}/libgdrive/libgdrive.a)
+target_link_libraries(${CMAKE_PROJECT_NAME} ${LIBS})
 
 install(TARGETS ${CMAKE_PROJECT_NAME} DESTINATION ${WEBOS_INSTALL_SBINDIR})
 
