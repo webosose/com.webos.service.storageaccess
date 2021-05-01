@@ -26,7 +26,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <SAFErrors.h>
-
+#include <sys/mount.h>
 
 
 using namespace std;
@@ -42,6 +42,7 @@ public:
     void handleRequests(std::shared_ptr<RequestData>);
     void attachCloud(std::shared_ptr<RequestData> reqData);
     void authenticateCloud(std::shared_ptr<RequestData> reqData);
+    void attachServer(std::shared_ptr<RequestData> reqData);
     void list(std::shared_ptr<RequestData> reqData);
     void getProperties(std::shared_ptr<RequestData> reqData);
     void remove(std::shared_ptr<RequestData> reqData);
@@ -53,6 +54,7 @@ public:
 	void eject(std::shared_ptr<RequestData> reqData);
 
 private:
+    map<string,string> mntpathmap;
     void getFilesFromPath(vector<string> &, const string&);
     bool copyFilefromInternaltoGDrive(Drive, string, string, string);
     bool copyFilefromGDrivetoInternal(AuthParam, Drive, string, string);

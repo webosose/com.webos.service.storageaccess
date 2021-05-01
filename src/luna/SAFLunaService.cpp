@@ -86,7 +86,8 @@ bool SAFLunaService::handleExtraCommand(LSMessage &message)
     int parseError = 0;
     const std::string schema = STRICT_SCHEMA(PROPS_3(PROP(storageType, string), PROP(driveId, string),
         OBJECT(operation, OBJSCHEMA_2(PROP(type, string), OBJECT(payload,
-        OBJSCHEMA_4(PROP(clientId, string), PROP(clientSecret, string), PROP(secretToken, string), PROP(refreshToken, string))))))
+        OBJSCHEMA_8(PROP(clientId, string), PROP(clientSecret, string), PROP(secretToken, string), PROP(refreshToken, string), 
+        PROP(userName, string), PROP(password, string), PROP(ip, string), PROP(path, string))))))
         REQUIRED_2(storageType,  operation));
     if (!LSUtils::parsePayload(request.getPayload(), requestObj, schema, &parseError))
     {
@@ -547,10 +548,9 @@ void SAFLunaService::onEjectReply(pbnjson::JValue rootObj, std::shared_ptr<LSUti
     // Fill Reply Object from Root Object and send
     LS::Message request(subs->getMessage());
     pbnjson::JValue reqObj;
-    pbnjson::JValue respObj;
+    pbnjson::JValue respObj = pbnjson::Object();
     if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
     {
-        reqObj.put("storageType","usb"); //for USB storageType
         StorageType type = getStorageDeviceType(reqObj);
         if (type == StorageType::USB)
         {
@@ -559,7 +559,7 @@ void SAFLunaService::onEjectReply(pbnjson::JValue rootObj, std::shared_ptr<LSUti
         }
         else if (type == StorageType::GDRIVE)
         {
-            respObj.put("returnValue", true);
+	    respObj = rootObj["response"];
         }
         else
         {

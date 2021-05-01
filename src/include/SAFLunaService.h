@@ -41,7 +41,7 @@ public:
     SAFLunaService();
     virtual ~SAFLunaService();
     bool handleExtraCommand(LSMessage &message);
-	void onHandleExtraCommandReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs);
+    void onHandleExtraCommandReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs);
     bool list(LSMessage &message);
     void onListReply(pbnjson::JValue, std::shared_ptr<LSUtils::ClientWatch>);
     bool getProperties(LSMessage &message);

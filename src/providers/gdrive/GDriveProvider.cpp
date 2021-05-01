@@ -86,6 +86,10 @@ void GDriveProvider::extraMethod(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         mGDriveOperObj.loadFileIds(mCred);
     }
+    else if ((type == "attachServer") && validateExtraCommand({"userName", "password", "ip"}, reqData))
+    {
+        attachServer(reqData);
+    }
     else
     {
         respObj.put("returnValue", false);
@@ -186,6 +190,54 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
         respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_URL));
     }
     reqData->cb(respObj, reqData->subs);
+}
+
+void GDriveProvider::attachServer(std::shared_ptr<RequestData> reqData)
+{
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    pbnjson::JValue respObj = pbnjson::Object();
+
+    std::string ip = reqData->params["operation"]["payload"]["ip"].asString();
+    std::string userName = reqData->params["operation"]["payload"]["userName"].asString();
+    std::string password = reqData->params["operation"]["payload"]["password"].asString();
+    std::string path = reqData->params["operation"]["payload"]["path"].asString();
+    if (path.empty()){
+         path = "/tmp/" + ip + "_" + userName;
+    }
+
+    FILE *fp;
+    std::string pathCreate = "mkdir -p " + path;
+
+    fp = popen(pathCreate.c_str(),"r");
+    if(fp == NULL)
+        LOG_DEBUG_SAF("attachServer::File Open Failed");
+    else
+      pclose(fp);
+
+
+   std::string src  = "//" + ip + "/" + userName;
+   const unsigned long mntflags = 0;
+   const char* type = "cifs";
+   if(mntpathmap.find(path) == mntpathmap.end()){
+       std::string data = "ip=" + ip + ",unc=\\\\" + ip + "\\" + userName + ",user=" + userName + ",pass=" + password;
+       int result = mount (src.c_str(), path.c_str(), type, mntflags , data.c_str());
+       if (result == 0)
+       {
+          mntpathmap[path] = path;
+          respObj.put("returnValue", true);
+          respObj.put("mountPath", path);
+       }
+       else
+       {
+          respObj.put("returnValue", false);
+          respObj.put("error", "unable to mount: " + path);
+       }
+   }
+   else{
+          respObj.put("returnValue", true);
+          respObj.put("mountPath", path);
+   }
+   reqData->cb(respObj, reqData->subs);
 }
 
 void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
@@ -741,8 +793,26 @@ void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
 void GDriveProvider::eject(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
+    std::string driveId = reqData->params["driveId"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", true);
+    if(mntpathmap.find(driveId) != mntpathmap.end()){
+	 int result =  umount2(mntpathmap[driveId].c_str(),MNT_FORCE);
+	 if (result ==0){
+	     mntpathmap.erase(driveId);
+             respObj.put("returnValue", true);
+             respObj.put("unmountPath: ", driveId);
+	 }
+	 else{
+             respObj.put("returnValue", false);
+             respObj.put("error", "Unable to eject : " + driveId);
+	 }
+    }
+    else{
+         respObj.put("returnValue", false);
+         respObj.put("error", "Unable to eject : " + driveId);
+    }
+    reqData->params.put("response", respObj);
     reqData->cb(reqData->params, std::move(reqData->subs));
 }
 
