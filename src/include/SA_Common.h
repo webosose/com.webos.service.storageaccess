@@ -27,7 +27,7 @@ enum class DataType {
 
 enum class StorageType
 {
-    INVALID = -1, INTERNAL, USB, GDRIVE
+    INVALID = -1, INTERNAL, USB, GDRIVE, NETWORK
 };
 
 class Content {
@@ -72,6 +72,7 @@ public:
 	StorageType storageType;
 	MethodType	methodType;
 	pbnjson::JValue params;
+	std::string sessionId;
 	std::shared_ptr<LSUtils::ClientWatch> subs;
 };
 

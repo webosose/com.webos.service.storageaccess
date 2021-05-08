@@ -27,19 +27,32 @@
 #include <pbnjson.h>
 #include "ClientWatch.h"
 
+#ifdef MULTI_SESSION_SUPPORT
 #define REQUEST_BUILDER(OBJ, TYPE, PARAMS, CB) \
 	OBJ->storageType = getStorageDeviceType(PARAMS); \
 	OBJ->params = PARAMS; \
+  	OBJ->sessionId = LSMessageGetSessionId(&message); \
 	OBJ->cb = std::bind(&CB, this, std::placeholders::_1, std::placeholders::_2); \
 	OBJ->methodType = TYPE; \
 	std::function<void(void)> fun = std::bind(&SAFLunaService::getSubsDropped, this); \
 	OBJ->subs = std::shared_ptr<LSUtils::ClientWatch>(new LSUtils::ClientWatch(this->get(), request.get(), fun));
+#else
+#define REQUEST_BUILDER(OBJ, TYPE, PARAMS, CB) \
+	OBJ->storageType = getStorageDeviceType(PARAMS); \
+	OBJ->params = PARAMS; \
+   	OBJ->sessionId = "host"; \
+	OBJ->cb = std::bind(&CB, this, std::placeholders::_1, std::placeholders::_2); \
+	OBJ->methodType = TYPE; \
+	std::function<void(void)> fun = std::bind(&SAFLunaService::getSubsDropped, this); \
+	OBJ->subs = std::shared_ptr<LSUtils::ClientWatch>(new LSUtils::ClientWatch(this->get(), request.get(), fun));
+#endif
 
 class SAFLunaService: public LS::Handle, public StatusObserver
 {
 public:
     SAFLunaService();
     virtual ~SAFLunaService();
+    bool validatePath(std::string);
     bool handleExtraCommand(LSMessage &message);
     void onHandleExtraCommandReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs);
     bool list(LSMessage &message);

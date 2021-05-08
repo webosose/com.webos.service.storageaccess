@@ -25,6 +25,7 @@
 #include <pbnjson.hpp>
 
 #define DEFAULT_INTERNAL_PATH "/tmp/internal"
+#define DEFAULT_INTERNAL_DRIVE_NAME "INTERNAL"
 #define DEFAULT_INTERNAL_STORAGE_ID	"INTERNAL_STORAGE"
 class InternalStorageProvider: public DocumentProvider
 {

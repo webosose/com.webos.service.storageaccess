@@ -16,7 +16,8 @@
 #include "GDriveProvider.h"
 #include <future>
 #include "gdrive/gdrive.hpp"
-#include "InternalOperationHandler.h"
+#include "SAFUtilityOperation.h"
+#include "UpnpDiscover.h"
 
 GDriveProvider::GDriveProvider() : mQuit(false), mCred(nullptr)
 {
@@ -80,15 +81,11 @@ void GDriveProvider::extraMethod(std::shared_ptr<RequestData> reqData)
         mAuthParam["refresh_token"] = reqData->params["operation"]["payload"]["refreshToken"].asString();
         while (mCred.use_count() != 0)
             mCred.reset();
-        mCred = std::shared_ptr<Credential>(new Credential(&mAuthParam));
+        mCred = std::shared_ptr<GDRIVE::Credential>(new GDRIVE::Credential(&mAuthParam));
         mUser = mAuthParam["client_secret"];
         respObj.put("returnValue", true);
         reqData->cb(respObj, reqData->subs);
         mGDriveOperObj.loadFileIds(mCred);
-    }
-    else if ((type == "attachServer") && validateExtraCommand({"userName", "password", "ip"}, reqData))
-    {
-        attachServer(reqData);
     }
     else
     {
@@ -109,7 +106,7 @@ void GDriveProvider::attachCloud(std::shared_ptr<RequestData> reqData)
         mAuthParam["client_id"] = reqData->params["operation"]["payload"]["clientId"].asString();
         mAuthParam["client_secret"] = reqData->params["operation"]["payload"]["clientSecret"].asString();
         mUser = mAuthParam["client_secret"];
-        OAuth oauth(mAuthParam["client_id"], mAuthParam["client_secret"]);
+        GDRIVE::OAuth oauth(mAuthParam["client_id"], mAuthParam["client_secret"]);
         authURL = oauth.get_authorize_url();
         LOG_DEBUG_SAF("attachCloud :client_id = [ %s ]   client_secret = [ %s ]", mAuthParam["client_id"].c_str(), mAuthParam["client_secret"].c_str());
     }
@@ -136,7 +133,7 @@ void GDriveProvider::attachCloud(std::shared_ptr<RequestData> reqData)
         pbnjson::JValue payloadObj = pbnjson::Object();
         payloadObj.put("response", authURL);
         responsePayObj.put("type", reqData->params["operation"]["type"].asString());
-        responsePayObj.put("paylod", payloadObj);
+        responsePayObj.put("payload", payloadObj);
         responsePayObjArr.append(responsePayObj);
         respObj.put("returnValue", true);
         respObj.put("responsePayload", responsePayObjArr);
@@ -162,9 +159,9 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
         mAuthParam["client_secret"].c_str(), mAuthParam["access_token"].c_str());
     while (mCred.use_count() != 0)
         mCred.reset();
-    mCred = std::shared_ptr<Credential>(new Credential(&mAuthParam));
+    mCred = std::shared_ptr<GDRIVE::Credential>(new GDRIVE::Credential(&mAuthParam));
     LOG_DEBUG_SAF("authenticateCloudTest 1");
-    OAuth oauth(mAuthParam["client_id"], mAuthParam["client_secret"]);
+    GDRIVE::OAuth oauth(mAuthParam["client_id"], mAuthParam["client_secret"]);
     LOG_DEBUG_SAF("authenticateCloudTest 2");
 
     if (!mAuthParam["access_token"].empty()
@@ -175,7 +172,7 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
         pbnjson::JValue payloadObj = pbnjson::Object();
         payloadObj.put("response", mAuthParam["refresh_token"]);
         responsePayObj.put("type", reqData->params["operation"]["type"].asString());
-        responsePayObj.put("paylod", payloadObj);
+        responsePayObj.put("payload", payloadObj);
         responsePayObjArr.append(responsePayObj);
         respObj.put("returnValue", true);
         respObj.put("responsePayload", responsePayObjArr);
@@ -190,54 +187,6 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
         respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::CloudErrors::INVALID_URL));
     }
     reqData->cb(respObj, reqData->subs);
-}
-
-void GDriveProvider::attachServer(std::shared_ptr<RequestData> reqData)
-{
-    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
-    pbnjson::JValue respObj = pbnjson::Object();
-
-    std::string ip = reqData->params["operation"]["payload"]["ip"].asString();
-    std::string userName = reqData->params["operation"]["payload"]["userName"].asString();
-    std::string password = reqData->params["operation"]["payload"]["password"].asString();
-    std::string path = reqData->params["operation"]["payload"]["path"].asString();
-    if (path.empty()){
-         path = "/tmp/" + ip + "_" + userName;
-    }
-
-    FILE *fp;
-    std::string pathCreate = "mkdir -p " + path;
-
-    fp = popen(pathCreate.c_str(),"r");
-    if(fp == NULL)
-        LOG_DEBUG_SAF("attachServer::File Open Failed");
-    else
-      pclose(fp);
-
-
-   std::string src  = "//" + ip + "/" + userName;
-   const unsigned long mntflags = 0;
-   const char* type = "cifs";
-   if(mntpathmap.find(path) == mntpathmap.end()){
-       std::string data = "ip=" + ip + ",unc=\\\\" + ip + "\\" + userName + ",user=" + userName + ",pass=" + password;
-       int result = mount (src.c_str(), path.c_str(), type, mntflags , data.c_str());
-       if (result == 0)
-       {
-          mntpathmap[path] = path;
-          respObj.put("returnValue", true);
-          respObj.put("mountPath", path);
-       }
-       else
-       {
-          respObj.put("returnValue", false);
-          respObj.put("error", "unable to mount: " + path);
-       }
-   }
-   else{
-          respObj.put("returnValue", true);
-          respObj.put("mountPath", path);
-   }
-   reqData->cb(respObj, reqData->subs);
 }
 
 void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
@@ -268,7 +217,7 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
     std::string folderpathId = mGDriveOperObj.getFileId(path);
     if (!folderpathId.empty())
     {
-        Drive service(mCred.get());
+        GDRIVE::Drive service(mCred.get());
         pbnjson::JValue contentsObj = pbnjson::Array();
         auto fileIdsMap = mGDriveOperObj.getFileMap(path);
         int start = (offset > (int)fileIdsMap.size())?(fileIdsMap.size() + 1):(offset - 1);
@@ -285,10 +234,10 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
             }
             if (index >= end)   break;
             index++;
-            FileGetRequest get = service.files().Get(entry.second);
+            GDRIVE::FileGetRequest get = service.files().Get(entry.second);
             get.add_field("id,title,mimeType,fileSize");
-            GFile file = get.execute();
-            GAbout about = service.about().Get().execute();
+            GDRIVE::GFile file = get.execute();
+            GDRIVE::GAbout about = service.about().Get().execute();
             long totalspace = about.get_quotaBytesTotal();
             LOG_DEBUG_SAF("Id %s", file.get_id().c_str());
             LOG_DEBUG_SAF("Title %s", file.get_title().c_str());
@@ -346,11 +295,11 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
         path = reqData->params["path"].asString();
         path = mGDriveOperObj.getFileId(path);
     }
-    Drive service(mCred.get());
-    FileGetRequest get = service.files().Get(path);
+    GDRIVE::Drive service(mCred.get());
+    GDRIVE::FileGetRequest get = service.files().Get(path);
     get.add_field("userPermission");
-    GFile file = get.execute();
-    GAbout about = service.about().Get().execute();
+    GDRIVE::GFile file = get.execute();
+    GDRIVE::GAbout about = service.about().Get().execute();
     string username = about.get_name();
     long totalspace = about.get_quotaBytesTotal();
     long freespace = about.get_quotaBytesUsed();
@@ -406,16 +355,16 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
     }
     std::string srcFileID = mGDriveOperObj.getFileId(srcPath);
     std::string destFileId = mGDriveOperObj.getFileId(destPath);
-    Drive service(mCred.get());
+    GDRIVE::Drive service(mCred.get());
     if (destStorageType== "cloud")
     {
         if (srcStorageType == "cloud")
         {
             if (!srcFileID.empty())
             {
-                GParent obj;
-                vector<GParent> vec;
-                GFile *movedFile = new GFile();
+                GDRIVE::GParent obj;
+                vector<GDRIVE::GParent> vec;
+                GDRIVE::GFile *movedFile = new GDRIVE::GFile();
                 if (!destFileId.empty()) {
                     obj.set_id(destFileId); //setting parent object to folder id
                 } else {
@@ -459,10 +408,10 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
                 return;
             }
 
-            FileContent fc(fin, mimeType);
-            GFile insertFile;
-            GParent obj;
-            vector<GParent> vec;
+            GDRIVE::FileContent fc(fin, mimeType);
+            GDRIVE::GFile insertFile;
+            GDRIVE::GParent obj;
+            vector<GDRIVE::GParent> vec;
             if(!destFileId.empty()) {
                 obj.set_id(destFileId);
             } else {
@@ -501,13 +450,13 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
         }
         destPath = destPath + srcPath.substr(srcPath.rfind("/"));
                 LOG_DEBUG_SAF(" DEST is NOT Cloud %s", destPath.c_str());
-        GFile downloadFile = service.files().Get(srcFileID).execute();
+        GDRIVE::GFile downloadFile = service.files().Get(srcFileID).execute();
         string url = downloadFile.get_downloadUrl();
         if (url == "") {
             url = downloadFile.get_exportLinks()["application/pdf"];
         }
-        CredentialHttpRequest request(mCred.get(), url, RM_GET);
-        HttpResponse resp = request.request();
+        GDRIVE::CredentialHttpRequest request(mCred.get(), url, GDRIVE::RM_GET);
+        GDRIVE::HttpResponse resp = request.request();
         ofstream fout(destPath.c_str(), std::ios::binary);
         if(!fout.good()) {
             respObj.put("returnValue", false);
@@ -562,16 +511,16 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
     }
     std::string srcFileID = mGDriveOperObj.getFileId(srcPath);
     std::string destFileId = mGDriveOperObj.getFileId(destPath);
-    Drive service(mCred.get());
+    GDRIVE::Drive service(mCred.get());
     if (destStorageType== "cloud")
     {
         if (srcStorageType == "cloud")
          {
             if (!srcFileID.empty())
             {
-                GParent obj;
-                vector<GParent> vec;
-                GFile *movedFile = new GFile();
+                GDRIVE::GParent obj;
+                vector<GDRIVE::GParent> vec;
+                GDRIVE::GFile *movedFile = new GDRIVE::GFile();
                 if (!destFileId.empty()) {
                     obj.set_id(destFileId); //setting parent object to folder id
                 } else {
@@ -614,10 +563,10 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
                 reqData->cb(respObj, reqData->subs);
                 return;
             }
-            FileContent fc(fin, mimeType);
-            GFile insertFile;
-            GParent obj;
-            vector<GParent> vec;
+            GDRIVE::FileContent fc(fin, mimeType);
+            GDRIVE::GFile insertFile;
+            GDRIVE::GParent obj;
+            vector<GDRIVE::GParent> vec;
             if(!destFileId.empty()) {
                 obj.set_id(destFileId);
             } else {
@@ -658,13 +607,13 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
         }
         destPath = destPath + srcPath.substr(srcPath.rfind("/"));
         LOG_DEBUG_SAF(" DEST is NOT Cloud %s", destPath.c_str());
-        GFile downloadFile = service.files().Get(srcFileID).execute();
+        GDRIVE::GFile downloadFile = service.files().Get(srcFileID).execute();
         string url = downloadFile.get_downloadUrl();
         if (url == "") {
             url = downloadFile.get_exportLinks()["application/pdf"];
         }
-        CredentialHttpRequest request(mCred.get(), url, RM_GET);
-        HttpResponse resp = request.request();
+        GDRIVE::CredentialHttpRequest request(mCred.get(), url, GDRIVE::RM_GET);
+        GDRIVE::HttpResponse resp = request.request();
         ofstream fout(destPath.c_str(), std::ios::binary);
         if(!fout.good()) {
             respObj.put("returnValue", false);
@@ -712,7 +661,7 @@ void GDriveProvider::remove(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("========>FileID:%s", fileId.c_str());
     if (!fileId.empty())
     {
-        Drive service(mCred.get());
+        GDRIVE::Drive service(mCred.get());
         service.files().Delete(fileId).execute();
         respObj.put("returnValue", true);
         respObj.put("status", "File Deleted");
@@ -753,9 +702,9 @@ void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
     std::string fileId = mGDriveOperObj.getFileId(reqData->params["path"].asString());
     if (!fileId.empty())
     {
-        GFile patchFile;
+        GDRIVE::GFile patchFile;
         patchFile.set_title(reqData->params["newName"].asString());
-        Drive service(mCred.get());
+        GDRIVE::Drive service(mCred.get());
         service.files().Patch(fileId, &patchFile).execute();
         respObj.put("returnValue", true);
         respObj.put("status", "File Renamed");
@@ -793,27 +742,6 @@ void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
 void GDriveProvider::eject(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
-    std::string driveId = reqData->params["driveId"].asString();
-    pbnjson::JValue respObj = pbnjson::Object();
-    respObj.put("returnValue", true);
-    if(mntpathmap.find(driveId) != mntpathmap.end()){
-	 int result =  umount2(mntpathmap[driveId].c_str(),MNT_FORCE);
-	 if (result ==0){
-	     mntpathmap.erase(driveId);
-             respObj.put("returnValue", true);
-             respObj.put("unmountPath: ", driveId);
-	 }
-	 else{
-             respObj.put("returnValue", false);
-             respObj.put("error", "Unable to eject : " + driveId);
-	 }
-    }
-    else{
-         respObj.put("returnValue", false);
-         respObj.put("error", "Unable to eject : " + driveId);
-    }
-    reqData->params.put("response", respObj);
-    reqData->cb(reqData->params, std::move(reqData->subs));
 }
 
 void GDriveProvider::insertMimeTypes() {
@@ -860,10 +788,10 @@ string GDriveProvider::getFileType(std::string mimeType) {
     return fileType;
 }
 
-void GDriveProvider::copyFileinGDrive(Drive service, string srcFileID, string destFolderId, string title) {
-    GParent obj;
-    vector<GParent> vec;
-    GFile copiedFile;
+void GDriveProvider::copyFileinGDrive(GDRIVE::Drive service, string srcFileID, string destFolderId, string title) {
+    GDRIVE::GParent obj;
+    vector<GDRIVE::GParent> vec;
+    GDRIVE::GFile copiedFile;
     if (!destFolderId.empty()) {
         obj.set_id(destFolderId);
     } else {
@@ -875,15 +803,15 @@ void GDriveProvider::copyFileinGDrive(Drive service, string srcFileID, string de
     service.files().Copy(srcFileID, &copiedFile).execute();
 }
 
-bool GDriveProvider::copyFilefromInternaltoGDrive(Drive service, string srcPath, string destFolderId, string mimeType) {
+bool GDriveProvider::copyFilefromInternaltoGDrive(GDRIVE::Drive service, string srcPath, string destFolderId, string mimeType) {
     ifstream fin(srcPath.c_str());
     if (!fin.good()) {
         return false;
     }
-    FileContent fc(fin, mimeType);
-    GFile insertFile;
-    GParent obj;
-    vector<GParent> vec;
+    GDRIVE::FileContent fc(fin, mimeType);
+    GDRIVE::GFile insertFile;
+    GDRIVE::GParent obj;
+    vector<GDRIVE::GParent> vec;
     if(!destFolderId.empty()) {
         obj.set_id(destFolderId);
     } else {
@@ -898,15 +826,15 @@ bool GDriveProvider::copyFilefromInternaltoGDrive(Drive service, string srcPath,
     return true;
 }
 
-bool GDriveProvider::copyFilefromGDrivetoInternal(AuthParam authParam, Drive service, string srcFileID, string destPath) {
-    GFile downloadFile = service.files().Get(srcFileID).execute();
+bool GDriveProvider::copyFilefromGDrivetoInternal(AuthParam authParam, GDRIVE::Drive service, string srcFileID, string destPath) {
+    GDRIVE::GFile downloadFile = service.files().Get(srcFileID).execute();
     string url = downloadFile.get_downloadUrl();
     if (url == "") {
         url = downloadFile.get_exportLinks()["application/pdf"];
     }
-    Credential cred(&authParam);
-    CredentialHttpRequest request(&cred, url, RM_GET);
-    HttpResponse resp = request.request();
+    GDRIVE::Credential cred(&authParam);
+    GDRIVE::CredentialHttpRequest request(&cred, url, GDRIVE::RM_GET);
+    GDRIVE::HttpResponse resp = request.request();
     ofstream fout(destPath.c_str(), std::ios::binary);
     if(!fout.good()) {
         return false;
@@ -928,17 +856,17 @@ void GDriveProvider::getFilesFromPath(vector<string> &filesVec, const string& pa
     }
 }
 
-string GDriveProvider::getFileID(Drive service, const vector<string>& filesVec)
+string GDriveProvider::getFileID(GDRIVE::Drive service, const vector<string>& filesVec)
 {
-    vector<GChildren> children;
+    vector<GDRIVE::GChildren> children;
     string fileID = filesVec.at(0);
     for (int i = 0; i < filesVec.size() - 1; i++) {
         children.clear();
         children = service.children().Listall(fileID);
         for (int j = 0; j < children.size(); j++) {
-            FileGetRequest get = service.files().Get(children[j].get_id());
+            GDRIVE::FileGetRequest get = service.files().Get(children[j].get_id());
             get.add_field("id,title,mimeType");
-            GFile file = get.execute();
+            GDRIVE::GFile file = get.execute();
             LOG_DEBUG_SAF("getFileID :: title : %s", file.get_title().c_str());
             if (file.get_title() == filesVec[i + 1]) {
                 fileID = file.get_id();

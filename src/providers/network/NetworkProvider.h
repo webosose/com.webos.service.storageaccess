@@ -10,12 +10,11 @@
  *
  * LICENSE@@@ */
 
-#ifndef _GDRIVE_PROVIDER_H_
-#define _GDRIVE_PROVIDER_H_
+#ifndef _NETWORK_PROVIDER_H_
+#define _NETWORK_PROVIDER_H_
 
 #include "DocumentProvider.h"
 #include "DocumentProviderFactory.h"
-#include "GDriveOperation.h"
 #include <iostream>
 #include "gdrive/gdrive.hpp"
 #include <assert.h>
@@ -28,19 +27,19 @@
 #include <SAFErrors.h>
 #include <sys/mount.h>
 
+#define SAMBA_NAME "SAMBA"
+#define UPNP_NAME  "UPNP"
 
-using namespace std;
-
-class GDriveProvider: public DocumentProvider
+class NetworkProvider: public DocumentProvider
 {
 public:
-    GDriveProvider();
-    virtual ~GDriveProvider();
+    NetworkProvider();
+    virtual ~NetworkProvider();
     void addRequest(std::shared_ptr<RequestData>&);
     void dispatchHandler();
     void handleRequests(std::shared_ptr<RequestData>);
-    void attachCloud(std::shared_ptr<RequestData> reqData);
-    void authenticateCloud(std::shared_ptr<RequestData> reqData);
+    void mountSambaServer(std::shared_ptr<RequestData> reqData);
+    void discoverUPnPMediaServer(std::shared_ptr<RequestData> reqData);
     void list(std::shared_ptr<RequestData> reqData);
     void getProperties(std::shared_ptr<RequestData> reqData);
     void remove(std::shared_ptr<RequestData> reqData);
@@ -48,35 +47,31 @@ public:
     void move(std::shared_ptr<RequestData> reqData);
     void rename(std::shared_ptr<RequestData> reqData);
     void listStoragesMethod(std::shared_ptr<RequestData> reqData);
-	void extraMethod(std::shared_ptr<RequestData> reqData);
-	void eject(std::shared_ptr<RequestData> reqData);
+    void extraMethod(std::shared_ptr<RequestData> reqData);
+    void eject(std::shared_ptr<RequestData> reqData);
 
 private:
-    map<string,string> mntpathmap;
-    void getFilesFromPath(vector<string> &, const string&);
-    bool copyFilefromInternaltoGDrive(GDRIVE::Drive, string, string, string);
-    bool copyFilefromGDrivetoInternal(AuthParam, GDRIVE::Drive, string, string);
-    void copyFileinGDrive(GDRIVE::Drive, string, string, string);
-    string getFileID(GDRIVE::Drive, const vector<string>&);
-    void insertMimeTypes();
-    string getMimeType(string);
-    std::string getFileType(std::string);
-    void setErrorMessage(shared_ptr<ValuePairMap>, string);
-	bool validateExtraCommand(std::vector<std::string>, std::shared_ptr<RequestData>);
-    map<string, string> mimetypesMap;
+    pbnjson::JValue parseMediaServer(std::string);
+    std::map<std::string, std::string> mSambaDriveMap;
+    std::map<std::string, std::string> mSambaSessionData;
+    std::map<std::string, std::string> mSambaPathMap;
+    std::string generateUniqueSambaDriveId();
+    std::map<std::string, std::string> mUpnpDriveMap;
+    std::map<std::string, std::string> mUpnpSessionData;
+    std::map<std::string, std::string> mUpnpPathMap;
+    std::string generateUniqueUpnpDriveId();
+    std::map<std::string, std::string> mntpathmap;
+    bool validateSambaOperation(std::string, std::string);
+    bool validateUpnpOperation(std::string, std::string);
+    void setErrorMessage(shared_ptr<ValuePairMap>, std::string);
+    bool validateExtraCommand(std::vector<std::string>, std::shared_ptr<RequestData>);
+    std::map<std::string, std::string> mimetypesMap;
     std::vector<std::shared_ptr<RequestData>> mQueue;
     std::thread mDispatcherThread;
     std::mutex mMutex;
     std::condition_variable mCondVar;
     volatile bool mQuit = false;
 
-private:
-    GDriveOperation mGDriveOperObj;
-    AuthParam mAuthParam;
-    std::shared_ptr<GDRIVE::Credential> mCred;
-    std::string mUser;
-	std::string mClientId;
-    std::string mClientSecret;
 };
 
-#endif /* _GDRIVE_PROVIDER_H_ */
+#endif /* _NETWORK_PROVIDER_H_ */

@@ -32,6 +32,14 @@ pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 include_directories(${GLIB2_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${GLIB2_CFLAGS_OTHER})
 
+pkg_check_modules(LIBXML2 REQUIRED libxml-2.0)
+include_directories(${LIBXML2_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${LIBXML2_CFLAGS_OTHER})
+
+pkg_check_modules(GUPNP REQUIRED gupnp-1.2)
+include_directories(${GUPNP_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${GUPNP_CFLAGS_OTHER})
+
 pkg_check_modules(LS2 REQUIRED luna-service2++)
 include_directories(${LS2_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${LS2_CFLAGS_OTHER})
@@ -50,6 +58,9 @@ set(INC_FILES
     src/include
     src/providers/gdrive/include
     src/providers/internal
+    src/providers/upnp
+    src/providers/network
+    src/utils
     )
 include_directories(${INC_FILES})
 
@@ -61,6 +72,8 @@ file(GLOB SAF_SOURCE
         ${CMAKE_SOURCE_DIR}/src/providers/usb/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/internal/*.cpp
         ${CMAKE_SOURCE_DIR}/src/providers/gdrive/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/providers/upnp/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/providers/network/*.cpp
         ${CMAKE_SOURCE_DIR}/src/main.cpp
 )
 
@@ -71,10 +84,14 @@ set(LIBS
     libgdrive.a
     ${LS2_LDFLAGS}
     ${GLIB2_LDFLAGS}
+    ${LIBXML2_LDFLAGS}
     ${PMLOGLIB_LDFLAGS}
     ${PBNJSON_CPP_LDFLAGS}
+    ${GUPNP_LDFLAGS}
     -lpthread
     -lcurl
+    -lglib-2.0
+    -lgupnp-1.2
     -lstdc++fs
     -Wl,--no-undefined
     )
