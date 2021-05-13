@@ -12,7 +12,6 @@
 
 #include <functional>
 #include <future>
-#include "InternalOperationHandler.h"
 #include <fstream>
 #include <bitset>
 #include <iostream>
@@ -21,6 +20,7 @@
 #include <chrono>
 #include <iomanip>
 #include <fstream>
+#include "SAFUtilityOperation.h"
 
 namespace fs = std::filesystem;
 
@@ -523,7 +523,7 @@ int32_t InternalCreateDir::getStatus()
     return mStatus;
 }
 
-InternalOperationHandler::InternalOperationHandler()
+SAFUtilityOperation::SAFUtilityOperation()
 {
     try
     {
@@ -536,45 +536,45 @@ InternalOperationHandler::InternalOperationHandler()
     }
 }
 
-InternalOperationHandler& InternalOperationHandler::getInstance()
+SAFUtilityOperation& SAFUtilityOperation::getInstance()
 {
-    static InternalOperationHandler obj = InternalOperationHandler();
+    static SAFUtilityOperation obj = SAFUtilityOperation();
     return obj;
 }
 
-std::unique_ptr<FolderContents> InternalOperationHandler::getListFolderContents(std::string path)
+std::unique_ptr<FolderContents> SAFUtilityOperation::getListFolderContents(std::string path)
 {
     std::unique_ptr<FolderContents> obj = std::unique_ptr<FolderContents>( new FolderContents(path));
     return std::move(obj);
 }
 
-std::unique_ptr<InternalSpaceInfo> InternalOperationHandler::getProperties(std::string path)
+std::unique_ptr<InternalSpaceInfo> SAFUtilityOperation::getProperties(std::string path)
 {
     if (path.empty())   path = "/tmp";
     std::unique_ptr<InternalSpaceInfo> obj = std::unique_ptr<InternalSpaceInfo>( new InternalSpaceInfo(path));
     return std::move(obj);
 }
 
-std::unique_ptr<InternalCopy> InternalOperationHandler::copy(std::string srcPath,
+std::unique_ptr<InternalCopy> SAFUtilityOperation::copy(std::string srcPath,
     std::string destPath, bool overwrite)
 {
     std::unique_ptr<InternalCopy> obj = std::unique_ptr<InternalCopy>(new InternalCopy(srcPath, destPath, overwrite));
     return std::move(obj);
 }
 
-std::unique_ptr<InternalRemove> InternalOperationHandler::remove(std::string path)
+std::unique_ptr<InternalRemove> SAFUtilityOperation::remove(std::string path)
 {
     std::unique_ptr<InternalRemove> obj = std::unique_ptr<InternalRemove>(new InternalRemove(path));
     return std::move(obj);
 }
 
-std::unique_ptr<InternalMove> InternalOperationHandler::move(std::string srcPath, std::string destPath, bool overwrite)
+std::unique_ptr<InternalMove> SAFUtilityOperation::move(std::string srcPath, std::string destPath, bool overwrite)
 {
     std::unique_ptr<InternalMove> obj = std::unique_ptr<InternalMove>(new InternalMove(srcPath, destPath, overwrite));
     return std::move(obj);
 }
 
-std::unique_ptr<InternalRename> InternalOperationHandler::rename(std::string srcPath, std::string destPath)
+std::unique_ptr<InternalRename> SAFUtilityOperation::rename(std::string srcPath, std::string destPath)
 {
     std::unique_ptr<InternalRename> obj = std::unique_ptr<InternalRename>(new InternalRename(srcPath, destPath));
     return std::move(obj);

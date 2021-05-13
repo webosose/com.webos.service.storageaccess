@@ -160,12 +160,12 @@ public:
 	int32_t getStatus();
 };
 
-class InternalOperationHandler
+class SAFUtilityOperation
 {
 private:
-    InternalOperationHandler();
+    SAFUtilityOperation();
 public:
-    static InternalOperationHandler& getInstance();
+    static SAFUtilityOperation& getInstance();
     std::unique_ptr<FolderContents> getListFolderContents(std::string);
     std::unique_ptr<InternalSpaceInfo> getProperties(std::string path = std::string());
     std::unique_ptr<InternalCopy> copy(std::string, std::string, bool);

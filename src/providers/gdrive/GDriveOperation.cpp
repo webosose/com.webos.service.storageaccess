@@ -14,26 +14,26 @@
 #include "GDriveOperation.h"
 #include "SAFLog.h"
 
-void GDriveOperation::loadFileIds(std::shared_ptr<Credential> cred)
+void GDriveOperation::loadFileIds(std::shared_ptr<GDRIVE::Credential> cred)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
     mFileIds.clear();
     mFileIds["/"] = "root";
-    std::shared_ptr<Drive> service = std::shared_ptr<Drive>(new Drive(cred.get()));
+    std::shared_ptr<GDRIVE::Drive> service = std::shared_ptr<GDRIVE::Drive>(new GDRIVE::Drive(cred.get()));
     getChildren("root", service, "/");
     while (service.use_count() != 0)
         service.reset();
 }
 
-void GDriveOperation::getChildren (std::string fileId, std::shared_ptr<Drive> service, std::string parentPath)
+void GDriveOperation::getChildren (std::string fileId, std::shared_ptr<GDRIVE::Drive> service, std::string parentPath)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
-    std::vector<GChildren>childs = service->children().Listall(fileId);
+    std::vector<GDRIVE::GChildren>childs = service->children().Listall(fileId);
     for (int j = 0; j < childs.size(); j++)
     {
-       FileGetRequest get = service->files().Get(childs[j].get_id());
+       GDRIVE::FileGetRequest get = service->files().Get(childs[j].get_id());
        get.add_field("id,title");
-       GFile file = get.execute();
+       GDRIVE::GFile file = get.execute();
        std::string path = parentPath + file.get_title();
        mFileIds[path] = file.get_id();
        LOG_DEBUG_SAF("getChildren  %s =>>>>:: %s", path.c_str(), file.get_title().c_str());

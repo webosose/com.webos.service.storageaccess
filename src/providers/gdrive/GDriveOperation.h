@@ -16,16 +16,15 @@
 #include <map>
 #include "gdrive/gdrive.hpp"
 
-using namespace GDRIVE;
 
 class GDriveOperation
 {
 public:
-    void loadFileIds(std::shared_ptr<Credential>);
+    void loadFileIds(std::shared_ptr<GDRIVE::Credential>);
     std::string getFileId(std::string);
     std::map<std::string, std::string> getFileMap(std::string path);
 private:
     std::map<std::string, std::string> mFileIds;
-    void getChildren (std::string, std::shared_ptr<Drive>, std::string);
+    void getChildren (std::string, std::shared_ptr<GDRIVE::Drive>, std::string);
 };
 #endif

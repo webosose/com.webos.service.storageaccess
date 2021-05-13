@@ -15,7 +15,9 @@
 #include "SA_Common.h"
 #include "SAFLunaService.h"
 #include "InternalStorageProvider.h"
-#include "InternalOperationHandler.h"
+#include "SAFUtilityOperation.h"
+#include "UpnpDiscover.h"
+#include <libxml/tree.h>
 
 using namespace std;
 
@@ -53,7 +55,7 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
     int totalCount = 0;
     std::string fullPath;
     pbnjson::JValue contenResArr = pbnjson::Array();
-    std::unique_ptr<FolderContents> contsPtr = InternalOperationHandler::getInstance().getListFolderContents(path);
+    std::unique_ptr<FolderContents> contsPtr = SAFUtilityOperation::getInstance().getListFolderContents(path);
     fullPath = contsPtr->getPath();
     totalCount = contsPtr->getTotalCount();
     if (contsPtr->getStatus() >= 0)
@@ -119,7 +121,7 @@ void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData
         respObj.put("errorText", errorStr);
         return;
     }
-    std::unique_ptr<InternalSpaceInfo> propPtr = InternalOperationHandler::getInstance().getProperties(path);
+    std::unique_ptr<InternalSpaceInfo> propPtr = SAFUtilityOperation::getInstance().getProperties(path);
     bool status = (propPtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
     if (status)
@@ -168,7 +170,7 @@ void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalCopy> copyPtr = InternalOperationHandler::getInstance().copy(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalCopy> copyPtr = SAFUtilityOperation::getInstance().copy(srcPath, destPath, overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -218,7 +220,7 @@ void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalMove> movePtr = InternalOperationHandler::getInstance().move(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(srcPath, destPath, overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -263,7 +265,7 @@ void InternalStorageProvider::remove(std::shared_ptr<RequestData> reqData)
     }
 
     std::string path = reqData->params["path"].asString();
-    std::unique_ptr<InternalRemove> remPtr = InternalOperationHandler::getInstance().remove(path);
+    std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(path);
     bool status = (remPtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
     if (!status)
@@ -291,7 +293,7 @@ void InternalStorageProvider::rename(std::shared_ptr<RequestData> reqData)
 
     std::string srcPath = reqData->params["path"].asString();
     std::string destPath = reqData->params["newName"].asString();
-    std::unique_ptr<InternalRename> renamePtr = InternalOperationHandler::getInstance().rename(srcPath, destPath);
+    std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(srcPath, destPath);
     bool status = (renamePtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
     if (!status)
@@ -319,7 +321,7 @@ void InternalStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> re
     pbnjson::JValue respObj = pbnjson::Object();
     pbnjson::JValue internalResArr = pbnjson::Array();
     pbnjson::JValue internalRes = pbnjson::Object();
-    internalRes.put("driveName", "INTERNAL");
+    internalRes.put("driveName", DEFAULT_INTERNAL_DRIVE_NAME);
     internalRes.put("driveId", DEFAULT_INTERNAL_STORAGE_ID);
     internalRes.put("path", DEFAULT_INTERNAL_PATH);
     internalResArr.append(internalRes);

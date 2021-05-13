@@ -1,0 +1,25 @@
+/* @@@LICENSE
+ *
+ * Copyright (c) 2020-2021 LG Electronics, Inc.
+ *
+ * Confidential computer software. Valid license from LG required for
+ * possession, use or copying. Consistent with FAR 12.211 and 12.212,
+ * Commercial Computer Software, Computer Software Documentation, and
+ * Technical Data for Commercial Items are licensed to the U.S. Government
+ * under vendor's standard commercial license.
+ *
+ * LICENSE@@@ */
+
+#include "NetworkProvider.h"
+#include "NetworkProviderFactory.h"
+#include <iostream>
+#include<SAFLog.h>
+
+DocumentProviderFactory::Registrator<NetworkProviderFactory> factoryNetworkStorage;
+
+std::shared_ptr<DocumentProvider> NetworkProviderFactory::create(void) const
+{
+    static std::shared_ptr<DocumentProvider> obj = std::make_shared<NetworkProvider> ();
+    return obj;
+}
+
