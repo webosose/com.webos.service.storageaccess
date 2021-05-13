@@ -19,16 +19,11 @@
 #include "SAFUtilityOperation.h"
 #include "UpnpDiscover.h"
 
-GDriveProvider::GDriveProvider() : mQuit(false), mCred(nullptr)
+GDriveProvider::GDriveProvider() : mQuit(false)
 {
     LOG_DEBUG_SAF(" GDriveProvider::GDriveProvider : Constructor Created");
     mDispatcherThread = std::thread(std::bind(&GDriveProvider::dispatchHandler, this));
     mDispatcherThread.detach();
-    mAuthParam["access_token"]  = "";
-    mAuthParam["client_id"]  = "";
-    mAuthParam["client_secret"]  = "";
-    mAuthParam["refresh_token"]  = "";
-    mAuthParam["id_token"]  = "";
     insertMimeTypes();
 }
 
@@ -39,6 +34,12 @@ GDriveProvider::~GDriveProvider()
     {
         mDispatcherThread.join();
     }
+}
+
+std::string GDriveProvider::generateDriveId()
+{
+    static int id = 0;
+    return (std::string(GDRIVE_NAME) + "_" + std::to_string(++id));
 }
 
 void GDriveProvider::setErrorMessage(shared_ptr<ValuePairMap> valueMap, string errorText)
@@ -76,16 +77,33 @@ void GDriveProvider::extraMethod(std::shared_ptr<RequestData> reqData)
     }
     else if ((type == "token") && validateExtraCommand({"clientId", "clientSecret", "refreshToken"}, reqData))
     {
-        mAuthParam["client_id"] = reqData->params["operation"]["payload"]["clientId"].asString();
-        mAuthParam["client_secret"] = reqData->params["operation"]["payload"]["clientSecret"].asString();
-        mAuthParam["refresh_token"] = reqData->params["operation"]["payload"]["refreshToken"].asString();
-        while (mCred.use_count() != 0)
-            mCred.reset();
-        mCred = std::shared_ptr<GDRIVE::Credential>(new GDRIVE::Credential(&mAuthParam));
-        mUser = mAuthParam["client_secret"];
+        std::string clientId = reqData->params["operation"]["payload"]["clientId"].asString();
+        if (mClientIdDriveId.find(clientId) == mClientIdDriveId.end())
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorCode", SAFErrors::INVALID_PARAM);
+            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_PARAM));
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+        if(mDriveIdSessionMap[mClientIdDriveId[clientId]] != reqData->sessionId)
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+            respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED));
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+        GDriveUserData& userDataObj = mDriveIdUserDataMap[mClientIdDriveId[clientId]];
+        userDataObj.mAuthParam["client_id"] = reqData->params["operation"]["payload"]["clientId"].asString();
+        userDataObj.mAuthParam["client_secret"] = reqData->params["operation"]["payload"]["clientSecret"].asString();
+        userDataObj.mAuthParam["refresh_token"] = reqData->params["operation"]["payload"]["refreshToken"].asString();
+        while (userDataObj.mCred.use_count() != 0)
+            userDataObj.mCred.reset();
+        userDataObj.mCred = std::shared_ptr<GDRIVE::Credential>(new GDRIVE::Credential(&userDataObj.mAuthParam));
         respObj.put("returnValue", true);
         reqData->cb(respObj, reqData->subs);
-        mGDriveOperObj.loadFileIds(mCred);
+        userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
     }
     else
     {
@@ -101,14 +119,19 @@ void GDriveProvider::attachCloud(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
     std::string authURL;
-    if (mAuthParam["refresh_token"].empty())
+    std::string clientId = reqData->params["operation"]["payload"]["clientId"].asString();
+    std::string clientSecret = reqData->params["operation"]["payload"]["clientSecret"].asString();
+    if (mClientIdDriveId.find(clientId) == mClientIdDriveId.end())
     {
-        mAuthParam["client_id"] = reqData->params["operation"]["payload"]["clientId"].asString();
-        mAuthParam["client_secret"] = reqData->params["operation"]["payload"]["clientSecret"].asString();
-        mUser = mAuthParam["client_secret"];
-        GDRIVE::OAuth oauth(mAuthParam["client_id"], mAuthParam["client_secret"]);
+        mClientIdDriveId[clientId] = generateDriveId();
+        mDriveIdSessionMap[mClientIdDriveId[clientId]] = reqData->sessionId;
+        GDriveUserData userDataObj;
+        userDataObj.mAuthParam["client_id"] = clientId;
+        userDataObj.mAuthParam["client_secret"] = clientSecret;
+        GDRIVE::OAuth oauth(clientId, clientSecret);
         authURL = oauth.get_authorize_url();
-        LOG_DEBUG_SAF("attachCloud :client_id = [ %s ]   client_secret = [ %s ]", mAuthParam["client_id"].c_str(), mAuthParam["client_secret"].c_str());
+        mDriveIdUserDataMap[mClientIdDriveId[clientId]] = userDataObj;
+        LOG_DEBUG_SAF("attachCloud :client_id = [ %s ]   client_secret = [ %s ]", clientId.c_str(), clientSecret.c_str());
     }
     else
     {
@@ -146,38 +169,38 @@ void GDriveProvider::authenticateCloud(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
     std::string driveId = reqData->params["driveId"].asString();
-    if(mUser != driveId)
+    if(mDriveIdUserDataMap.find(driveId) == mDriveIdUserDataMap.end())
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
         reqData->cb(respObj, reqData->subs);
         return;
     }
-
-    mAuthParam["access_token"] = reqData->params["operation"]["payload"]["secretToken"].asString();
-    LOG_DEBUG_SAF("authenticateCloud :client_id = [ %s ]   client_secret = [ %s ]   secret_token = [ %s ]", mAuthParam["client_id"].c_str(),
-        mAuthParam["client_secret"].c_str(), mAuthParam["access_token"].c_str());
-    while (mCred.use_count() != 0)
-        mCred.reset();
-    mCred = std::shared_ptr<GDRIVE::Credential>(new GDRIVE::Credential(&mAuthParam));
+    GDriveUserData& userDataObj = mDriveIdUserDataMap[driveId];
+    userDataObj.mAuthParam["access_token"] = reqData->params["operation"]["payload"]["secretToken"].asString();
+    LOG_DEBUG_SAF("authenticateCloud :client_id = [ %s ]   client_secret = [ %s ]   secret_token = [ %s ]", 
+        userDataObj.mAuthParam["client_id"].c_str(), userDataObj.mAuthParam["client_secret"].c_str(), userDataObj.mAuthParam["access_token"].c_str());
+    while (userDataObj.mCred.use_count() != 0)
+        userDataObj.mCred.reset();
+    userDataObj.mCred = std::shared_ptr<GDRIVE::Credential>(new GDRIVE::Credential(&userDataObj.mAuthParam));
     LOG_DEBUG_SAF("authenticateCloudTest 1");
-    GDRIVE::OAuth oauth(mAuthParam["client_id"], mAuthParam["client_secret"]);
+    GDRIVE::OAuth oauth(userDataObj.mAuthParam["client_id"], userDataObj.mAuthParam["client_secret"]);
     LOG_DEBUG_SAF("authenticateCloudTest 2");
 
-    if (!mAuthParam["access_token"].empty()
-        && oauth.build_credential(mAuthParam["access_token"], *(mCred.get())))
+    if (!userDataObj.mAuthParam["access_token"].empty()
+        && oauth.build_credential(userDataObj.mAuthParam["access_token"], *(userDataObj.mCred.get())))
     {
         pbnjson::JValue responsePayObjArr = pbnjson::Array();
         pbnjson::JValue responsePayObj = pbnjson::Object();
         pbnjson::JValue payloadObj = pbnjson::Object();
-        payloadObj.put("response", mAuthParam["refresh_token"]);
+        payloadObj.put("response", userDataObj.mAuthParam["refresh_token"]);
         responsePayObj.put("type", reqData->params["operation"]["type"].asString());
         responsePayObj.put("payload", payloadObj);
         responsePayObjArr.append(responsePayObj);
         respObj.put("returnValue", true);
         respObj.put("responsePayload", responsePayObjArr);
         reqData->cb(respObj, reqData->subs);
-        mGDriveOperObj.loadFileIds(mCred);
+        userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
         return;
     }
     else
@@ -194,18 +217,26 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
     std::string driveId = reqData->params["driveId"].asString();
-    if(mUser != driveId)
+    if(mDriveIdUserDataMap.find(driveId) == mDriveIdUserDataMap.end())
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
         reqData->cb(respObj, reqData->subs);
         return;
     }
-
+    if(mDriveIdSessionMap[driveId] != reqData->sessionId)
+    {
+        respObj.put("returnValue", false);
+        respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED));
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     std::string path = reqData->params["path"].asString();
     int limit = reqData->params["limit"].asNumber<int>();
     int offset = reqData->params["offset"].asNumber<int>();
-    if (mAuthParam["refresh_token"].empty())
+    GDriveUserData &userDataObj = mDriveIdUserDataMap[driveId];
+    if (userDataObj.mAuthParam["refresh_token"].empty())
     {
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::CloudErrors::AUTHENTICATION_NOT_DONE);
@@ -213,19 +244,19 @@ void GDriveProvider::list(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    mGDriveOperObj.loadFileIds(mCred);
-    std::string folderpathId = mGDriveOperObj.getFileId(path);
+    userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
+    std::string folderpathId = userDataObj.mGDriveOperObj.getFileId(path);
     if (!folderpathId.empty())
     {
-        GDRIVE::Drive service(mCred.get());
+        GDRIVE::Drive service(userDataObj.mCred.get());
         pbnjson::JValue contentsObj = pbnjson::Array();
-        auto fileIdsMap = mGDriveOperObj.getFileMap(path);
+        auto fileIdsMap = userDataObj.mGDriveOperObj.getFileMap(path);
         int start = (offset > (int)fileIdsMap.size())?(fileIdsMap.size() + 1):(offset - 1);
         start = (start < 0)?(fileIdsMap.size() + 1):(start);
         int end = ((limit + offset - 1) >  fileIdsMap.size())?(fileIdsMap.size()):(limit + offset - 1);
         end = (end < 0)?(fileIdsMap.size()):(end);
         int index = 0;
-        for(auto entry : mGDriveOperObj.getFileMap( path))
+        for(auto entry : userDataObj.mGDriveOperObj.getFileMap( path))
         {
             if (index < start)
             {
@@ -274,14 +305,23 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
     std::string driveId = reqData->params["driveId"].asString();
-    if(mUser != driveId)
+    if(mDriveIdUserDataMap.find(driveId) == mDriveIdUserDataMap.end())
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    if (mAuthParam["refresh_token"].empty())
+    if(mDriveIdSessionMap[driveId] != reqData->sessionId)
+    {
+        respObj.put("returnValue", false);
+        respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED));
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+    GDriveUserData &userDataObj = mDriveIdUserDataMap[driveId];
+    if (userDataObj.mAuthParam["refresh_token"].empty())
     {
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::CloudErrors::AUTHENTICATION_NOT_DONE);
@@ -293,9 +333,9 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("path"))
     {
         path = reqData->params["path"].asString();
-        path = mGDriveOperObj.getFileId(path);
+        path = userDataObj.mGDriveOperObj.getFileId(path);
     }
-    GDRIVE::Drive service(mCred.get());
+    GDRIVE::Drive service(userDataObj.mCred.get());
     GDRIVE::FileGetRequest get = service.files().Get(path);
     get.add_field("userPermission");
     GDRIVE::GFile file = get.execute();
@@ -334,17 +374,32 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
         driveId = reqData->params["srcDriveId"].asString();
     else
         driveId = reqData->params["destDriveId"].asString();
-
-    if(mUser != driveId)
+    if ((srcStorageType == "cloud") && (destStorageType == "cloud")
+        && (reqData->params["srcDriveId"].asString() != 
+        reqData->params["destDriveId"].asString()))
+    {
+        respObj.put("errorCode", SAFErrors::SAF_ERROR_NOT_SUPPORTED);
+        respObj.put("errorText", "Not supported yet");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+    if(mDriveIdUserDataMap.find(driveId) == mDriveIdUserDataMap.end())
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    if(reqData->params.hasKey("subscribe"))
-        bool subscribe = reqData->params["subscribe"].asBool();
-    if (mAuthParam["refresh_token"].empty())
+    if(mDriveIdSessionMap[driveId] != reqData->sessionId)
+    {
+        respObj.put("returnValue", false);
+        respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED));
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+    GDriveUserData &userDataObj = mDriveIdUserDataMap[driveId];
+    if (userDataObj.mAuthParam["refresh_token"].empty())
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
         respObj.put("returnValue", false);
@@ -353,9 +408,9 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    std::string srcFileID = mGDriveOperObj.getFileId(srcPath);
-    std::string destFileId = mGDriveOperObj.getFileId(destPath);
-    GDRIVE::Drive service(mCred.get());
+    std::string srcFileID = userDataObj.mGDriveOperObj.getFileId(srcPath);
+    std::string destFileId = userDataObj.mGDriveOperObj.getFileId(destPath);
+    GDRIVE::Drive service(userDataObj.mCred.get());
     if (destStorageType== "cloud")
     {
         if (srcStorageType == "cloud")
@@ -376,7 +431,7 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
                 respObj.put("returnValue", true);
                 respObj.put("progress", 100);
                 reqData->cb(respObj, reqData->subs);
-                mGDriveOperObj.loadFileIds(mCred);
+                userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
                 return;
             }
             else
@@ -426,7 +481,7 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
             respObj.put("returnValue", true);
             respObj.put("progress", 100);
             reqData->cb(respObj, reqData->subs);
-            mGDriveOperObj.loadFileIds(mCred);
+            userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
             return;
         }
     }
@@ -455,7 +510,7 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
         if (url == "") {
             url = downloadFile.get_exportLinks()["application/pdf"];
         }
-        GDRIVE::CredentialHttpRequest request(mCred.get(), url, GDRIVE::RM_GET);
+        GDRIVE::CredentialHttpRequest request(userDataObj.mCred.get(), url, GDRIVE::RM_GET);
         GDRIVE::HttpResponse resp = request.request();
         ofstream fout(destPath.c_str(), std::ios::binary);
         if(!fout.good()) {
@@ -470,7 +525,7 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", true);
         respObj.put("progress", 100);
         reqData->cb(respObj, reqData->subs);
-        mGDriveOperObj.loadFileIds(mCred);
+        userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
         return;
     }
     reqData->cb(respObj, reqData->subs);
@@ -485,22 +540,42 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
     std::string srcStorageType = reqData->params["srcStorageType"].asString();
     std::string destStorageType = reqData->params["destStorageType"].asString();
     bool overwrite = reqData->params["overwrite"].asBool();
-    std::string driveId = "";
+    if ((srcStorageType == "cloud") && (destStorageType == "cloud")
+        && (reqData->params["srcDriveId"].asString() != 
+        reqData->params["destDriveId"].asString()))
+    {
+        respObj.put("errorCode", SAFErrors::SAF_ERROR_NOT_SUPPORTED);
+        respObj.put("errorText", "Not supported yet");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+    std::string driveId;
     if(srcStorageType == "cloud")
         driveId = reqData->params["srcDriveId"].asString();
     else
         driveId = reqData->params["destDriveId"].asString();
 
-    if(mUser != driveId)
+    if(reqData->params.hasKey("subscribe"))
+        bool subscribe = reqData->params["subscribe"].asBool();
+
+    if(mDriveIdUserDataMap.find(driveId) == mDriveIdUserDataMap.end())
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    if(reqData->params.hasKey("subscribe"))
-        bool subscribe = reqData->params["subscribe"].asBool();
-    if (mAuthParam["refresh_token"].empty())
+    if(mDriveIdSessionMap[driveId] != reqData->sessionId)
+    {
+        respObj.put("returnValue", false);
+        respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED));
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+    GDriveUserData &userDataObj = mDriveIdUserDataMap[driveId];
+
+    if (userDataObj.mAuthParam["refresh_token"].empty())
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
         respObj.put("returnValue", false);
@@ -509,9 +584,9 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    std::string srcFileID = mGDriveOperObj.getFileId(srcPath);
-    std::string destFileId = mGDriveOperObj.getFileId(destPath);
-    GDRIVE::Drive service(mCred.get());
+    std::string srcFileID = userDataObj.mGDriveOperObj.getFileId(srcPath);
+    std::string destFileId = userDataObj.mGDriveOperObj.getFileId(destPath);
+    GDRIVE::Drive service(userDataObj.mCred.get());
     if (destStorageType== "cloud")
     {
         if (srcStorageType == "cloud")
@@ -533,7 +608,7 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
                 respObj.put("returnValue", true);
                 respObj.put("progress", 100);
                 reqData->cb(respObj, reqData->subs);
-                mGDriveOperObj.loadFileIds(mCred);
+                userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
                 return;
             }
             else
@@ -583,8 +658,8 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
             auto intObj = InternalRemove(srcPath);
             (void)intObj;
             reqData->cb(respObj, reqData->subs);
-            mGDriveOperObj.loadFileIds(mCred);
-	    return;
+            userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
+        return;
         }
     }
     else
@@ -612,7 +687,7 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
         if (url == "") {
             url = downloadFile.get_exportLinks()["application/pdf"];
         }
-        GDRIVE::CredentialHttpRequest request(mCred.get(), url, GDRIVE::RM_GET);
+        GDRIVE::CredentialHttpRequest request(userDataObj.mCred.get(), url, GDRIVE::RM_GET);
         GDRIVE::HttpResponse resp = request.request();
         ofstream fout(destPath.c_str(), std::ios::binary);
         if(!fout.good()) {
@@ -628,7 +703,7 @@ void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", true);
         respObj.put("progress", 100);
         reqData->cb(respObj, reqData->subs);
-        mGDriveOperObj.loadFileIds(mCred);
+        userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
         return;
     }
     reqData->cb(respObj, reqData->subs);
@@ -640,14 +715,24 @@ void GDriveProvider::remove(std::shared_ptr<RequestData> reqData)
     std::string path = reqData->params["path"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
     std::string driveId = reqData->params["driveId"].asString();
-    if(mUser != driveId)
+    if(mDriveIdUserDataMap.find(driveId) == mDriveIdUserDataMap.end())
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    if (mAuthParam["refresh_token"].empty())
+    if(mDriveIdSessionMap[driveId] != reqData->sessionId)
+    {
+        respObj.put("returnValue", false);
+        respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED));
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+    GDriveUserData &userDataObj = mDriveIdUserDataMap[driveId];
+
+    if (userDataObj.mAuthParam["refresh_token"].empty())
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
         respObj.put("returnValue", false);
@@ -657,16 +742,16 @@ void GDriveProvider::remove(std::shared_ptr<RequestData> reqData)
         return;
     }
 
-    std::string fileId = mGDriveOperObj.getFileId(path);
+    std::string fileId = userDataObj.mGDriveOperObj.getFileId(path);
     LOG_DEBUG_SAF("========>FileID:%s", fileId.c_str());
     if (!fileId.empty())
     {
-        GDRIVE::Drive service(mCred.get());
+        GDRIVE::Drive service(userDataObj.mCred.get());
         service.files().Delete(fileId).execute();
         respObj.put("returnValue", true);
         respObj.put("status", "File Deleted");
         reqData->cb(respObj, reqData->subs);
-        mGDriveOperObj.loadFileIds(mCred);
+        userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
         return;
     }
     else
@@ -683,14 +768,24 @@ void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
     std::string driveId = reqData->params["driveId"].asString();
-    if(mUser != driveId)
+    if(mDriveIdUserDataMap.find(driveId) == mDriveIdUserDataMap.end())
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    if (mAuthParam["refresh_token"].empty())
+    if(mDriveIdSessionMap[driveId] != reqData->sessionId)
+    {
+        respObj.put("returnValue", false);
+        respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED));
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+    GDriveUserData &userDataObj = mDriveIdUserDataMap[driveId];
+
+    if (userDataObj.mAuthParam["refresh_token"].empty())
     {
         LOG_DEBUG_SAF("===> Authentication Not Done");
         respObj.put("returnValue", false);
@@ -699,17 +794,17 @@ void GDriveProvider::rename(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    std::string fileId = mGDriveOperObj.getFileId(reqData->params["path"].asString());
+    std::string fileId = userDataObj.mGDriveOperObj.getFileId(reqData->params["path"].asString());
     if (!fileId.empty())
     {
         GDRIVE::GFile patchFile;
         patchFile.set_title(reqData->params["newName"].asString());
-        GDRIVE::Drive service(mCred.get());
+        GDRIVE::Drive service(userDataObj.mCred.get());
         service.files().Patch(fileId, &patchFile).execute();
         respObj.put("returnValue", true);
         respObj.put("status", "File Renamed");
         reqData->cb(respObj, reqData->subs);
-        mGDriveOperObj.loadFileIds(mCred);
+        userDataObj.mGDriveOperObj.loadFileIds(userDataObj.mCred);
         return;
     }
     else
@@ -726,11 +821,11 @@ void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
     pbnjson::JValue gdriveResArr = pbnjson::Array();
-    if (!mAuthParam["refresh_token"].empty())
+    for (auto entry : mDriveIdSessionMap)
     {
         pbnjson::JValue gdriveRes = pbnjson::Object();
-        gdriveRes.put("driveName", "GDRIVE");
-        gdriveRes.put("driveId", mUser);
+        gdriveRes.put("driveName", GDRIVE_NAME);
+        gdriveRes.put("driveId", entry.first);
         gdriveRes.put("path", "/");
         gdriveResArr.append(gdriveRes);
     }

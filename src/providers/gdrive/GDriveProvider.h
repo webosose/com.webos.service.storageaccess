@@ -28,8 +28,16 @@
 #include <SAFErrors.h>
 #include <sys/mount.h>
 
+#define GDRIVE_NAME "GDRIVE"
 
-using namespace std;
+typedef struct GDriveUserData_
+{
+    GDriveOperation mGDriveOperObj;
+    AuthParam mAuthParam;
+    std::shared_ptr<GDRIVE::Credential> mCred;
+    std::string mClientId;
+    std::string mClientSecret;
+} GDriveUserData;
 
 class GDriveProvider: public DocumentProvider
 {
@@ -48,22 +56,21 @@ public:
     void move(std::shared_ptr<RequestData> reqData);
     void rename(std::shared_ptr<RequestData> reqData);
     void listStoragesMethod(std::shared_ptr<RequestData> reqData);
-	void extraMethod(std::shared_ptr<RequestData> reqData);
-	void eject(std::shared_ptr<RequestData> reqData);
+    void extraMethod(std::shared_ptr<RequestData> reqData);
+    void eject(std::shared_ptr<RequestData> reqData);
 
 private:
-    map<string,string> mntpathmap;
-    void getFilesFromPath(vector<string> &, const string&);
-    bool copyFilefromInternaltoGDrive(GDRIVE::Drive, string, string, string);
-    bool copyFilefromGDrivetoInternal(AuthParam, GDRIVE::Drive, string, string);
-    void copyFileinGDrive(GDRIVE::Drive, string, string, string);
-    string getFileID(GDRIVE::Drive, const vector<string>&);
+    void getFilesFromPath(std::vector<std::string> &, const std::string&);
+    bool copyFilefromInternaltoGDrive(GDRIVE::Drive, std::string, std::string, std::string);
+    bool copyFilefromGDrivetoInternal(AuthParam, GDRIVE::Drive, std::string, std::string);
+    void copyFileinGDrive(GDRIVE::Drive, std::string, std::string, std::string);
+    std::string getFileID(GDRIVE::Drive, const std::vector<std::string>&);
     void insertMimeTypes();
-    string getMimeType(string);
+    std::string getMimeType(std::string);
     std::string getFileType(std::string);
-    void setErrorMessage(shared_ptr<ValuePairMap>, string);
-	bool validateExtraCommand(std::vector<std::string>, std::shared_ptr<RequestData>);
-    map<string, string> mimetypesMap;
+    void setErrorMessage(std::shared_ptr<ValuePairMap>, std::string);
+    bool validateExtraCommand(std::vector<std::string>, std::shared_ptr<RequestData>);
+    map<std::string, std::string> mimetypesMap;
     std::vector<std::shared_ptr<RequestData>> mQueue;
     std::thread mDispatcherThread;
     std::mutex mMutex;
@@ -71,12 +78,10 @@ private:
     volatile bool mQuit = false;
 
 private:
-    GDriveOperation mGDriveOperObj;
-    AuthParam mAuthParam;
-    std::shared_ptr<GDRIVE::Credential> mCred;
-    std::string mUser;
-	std::string mClientId;
-    std::string mClientSecret;
+    std::string generateDriveId();
+    std::map<std::string, GDriveUserData> mDriveIdUserDataMap;
+    std::map<std::string, std::string> mDriveIdSessionMap;
+    std::map<std::string, std::string> mClientIdDriveId;
 };
 
 #endif /* _GDRIVE_PROVIDER_H_ */
