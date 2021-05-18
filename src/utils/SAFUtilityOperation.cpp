@@ -43,6 +43,85 @@ bool validateInternalPath(std::string& path)
     }
     return retVal;
 }
+bool SAFUtilityOperation::validateInternalPath(std::string& path, std::string& sessionId)
+{
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    if ((path.find("/media") == 0) || (path.find("/tmp") == 0) || (path.find("/home/"+sessionId) == 0))
+        if(fs::exists(path))
+            return true;
+    return false;
+}
+
+bool SAFUtilityOperation::validateSambaPath(std::string& path,std::string& driveId)
+{
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    if((mSambaDrivePathMap.find(driveId) != mSambaDrivePathMap.end()) && (path.find(mSambaDrivePathMap[driveId]) == 0)
+        && fs::exists(path))
+        return true;
+    return false;
+}
+
+void SAFUtilityOperation::setDriveDetails(const std::string& type, std::map<std::string,std::string>& inputMap)
+{
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    if(type == "SAMBA")
+    {
+        mSambaDrivePathMap.clear();
+        for(auto entry : inputMap)
+            mSambaDrivePathMap[entry.first] = entry.second;
+    }
+
+}
+
+bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<RequestData> reqData)
+{
+    LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    bool result = true;
+    std::string srcDriveId = reqData->params["srcDriveId"].asString();
+    std::string destDriveId = reqData->params["destDriveId"].asString();
+    std::string srcPath = reqData->params["srcPath"].asString();
+    std::string destPath = reqData->params["destPath"].asString();
+    std::string srcStorageType = reqData->params["srcStorageType"].asString();
+    std::string destStorageType = reqData->params["destStorageType"].asString();
+    std::string sessionId = reqData->sessionId;
+    pbnjson::JValue respObj = pbnjson::Object();
+    if((destStorageType == "network") && (destDriveId.find("UPNP") != std::string::npos))
+    {
+        respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        respObj.put("errorText", "Operation not Permitted");
+        reqData->cb(respObj, reqData->subs);
+        result = false;
+    }
+    if((destStorageType == "network") && (!validateSambaPath(destPath, destDriveId)))
+    {
+        respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
+        respObj.put("errorText", "No such file or directory at destination");
+        reqData->cb(respObj, reqData->subs);
+        result = false;
+    }
+    else if((destStorageType == "internal") && (!validateInternalPath(destPath,sessionId)))
+    {
+        respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
+        respObj.put("errorText", "No such file or directory at destination");
+        reqData->cb(respObj, reqData->subs);
+        result = false;
+    }
+    else if((srcStorageType == "network") && (!validateSambaPath(srcPath, destDriveId)))
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
+        respObj.put("errorText", "No such file or directory at source");
+        reqData->cb(respObj, reqData->subs);
+        result = false;
+    }
+    else if((srcStorageType == "internal") && (!validateInternalPath(srcPath,sessionId)))
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
+        respObj.put("errorText", "No such file or directory at source");
+        reqData->cb(respObj, reqData->subs);
+        result = false;
+    }
+    return result;
+}
 
 int getInternalErrorCode(int errorCode)
 {

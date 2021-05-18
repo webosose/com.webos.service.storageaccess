@@ -149,11 +149,16 @@ CLEANUP:
     {
         curl_slist_free_all(headers);
     }
-
-    free(rsp_body.memory);
-
-    free(rsp_header.memory);
-
+    if(rsp_body.memory)
+    {
+        free(rsp_body.memory);
+        rsp_body.memory = NULL;
+    }
+    if(rsp_header.memory)
+    {
+        free(rsp_header.memory);
+        rsp_header.memory = NULL;
+    }
     if (NULL != curl)
     {
         curl_easy_cleanup(curl);
