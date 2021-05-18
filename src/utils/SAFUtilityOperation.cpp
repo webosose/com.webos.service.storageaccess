@@ -53,6 +53,7 @@ int getInternalErrorCode(int errorCode)
         {InternalOperErrors::INVALID_SOURCE_PATH, SAFErrors::INVALID_SOURCE_PATH},
         {InternalOperErrors::INVALID_DEST_PATH, SAFErrors::INVALID_DEST_PATH},
         {InternalOperErrors::FILE_ALREADY_EXISTS, SAFErrors::FILE_ALREADY_EXISTS},
+        {InternalOperErrors::PERMISSION_DENIED,     SAFErrors::PERMISSION_DENIED},
         {InternalOperErrors::SUCCESS, SAFErrors::NO_ERROR}
     };
     int retCode = SAFErrors::UNKNOWN_ERROR;
@@ -102,9 +103,9 @@ std::string FolderContent::getFileType(std::string filePath)
     return type;
 }
 
-uint32_t FolderContent::getFileSize(std::string filePath)
+uintmax_t FolderContent::getFileSize(std::string filePath)
 {
-    std::uint32_t size = 0;
+    std::uintmax_t size = 0;
     try
     {
         if (!validateInternalPath(filePath))

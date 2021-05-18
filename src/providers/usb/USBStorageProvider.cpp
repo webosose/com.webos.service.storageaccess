@@ -16,7 +16,7 @@
 #include "USBStorageProvider.h"
 #include "SA_Common.h"
 #include "SAFLunaService.h"
-#include "USBOperationHandler.h"
+#include "SAFUtilityOperation.h"
 #include "SAFErrors.h"
 #include "USBJsonParser.h"
 
@@ -99,7 +99,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
         pbnjson::JValue attributesArr = pbnjson::Array();
         pbnjson::JValue attrObj = pbnjson::Object();
 
-        std::unique_ptr<USBSpaceInfo> propPtr = USBOperationHandler::getInstance().getProperties(ctxPtr->reqData->params["path"].asString());
+        std::unique_ptr<InternalSpaceInfo> propPtr = SAFUtilityOperation::getInstance().getProperties(ctxPtr->reqData->params["path"].asString());
         bool status = (propPtr->getStatus() < 0)?(false):(true);
         respObj.put("returnValue", status);
         if (status)
@@ -115,7 +115,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
         }
         else
         {
-            auto errorCode = getUSBErrorCode(propPtr->getStatus());
+            auto errorCode = getInternalErrorCode(propPtr->getStatus());
             auto errorStr = SAFErrors::USBErrors::getUSBErrorString(errorCode);
             respObj.put("errorCode", errorCode);
             respObj.put("errorText", errorStr);
@@ -277,7 +277,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<USBCopy> copyPtr = USBOperationHandler::getInstance().copy(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalCopy> copyPtr = SAFUtilityOperation::getInstance().copy(srcPath, destPath, overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -294,7 +294,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
         }
         else
         {
-            auto errorCode = getUSBErrorCode(copyPtr->getStatus());
+            auto errorCode = getInternalErrorCode(copyPtr->getStatus());
             auto errorStr  = SAFErrors::USBErrors::getUSBErrorString(errorCode);
             respObj.put("errorCode", errorCode);
             respObj.put("errorText", errorStr);
@@ -353,7 +353,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<USBMove> movePtr = USBOperationHandler::getInstance().move(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(srcPath, destPath, overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -370,7 +370,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
         }
         else
         {
-            auto errorCode = getUSBErrorCode(movePtr->getStatus());
+            auto errorCode = getInternalErrorCode(movePtr->getStatus());
             auto errorStr = SAFErrors::USBErrors::getUSBErrorString(errorCode);
             respObj.put("errorCode", errorCode);
             respObj.put("errorText", errorStr);
@@ -409,13 +409,13 @@ void USBStorageProvider::removeMethod(std::shared_ptr<RequestData> reqData)
         return;
     }
 
-    std::unique_ptr<USBRemove> remPtr = USBOperationHandler::getInstance().remove(path);
+    std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(path);
     bool status = (remPtr->getStatus() < 0)?(false):(true);
     pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", status);
     if (!status)
     {
-        auto errorCode = getUSBErrorCode(remPtr->getStatus());
+        auto errorCode = getInternalErrorCode(remPtr->getStatus());
         auto errorStr  = SAFErrors::USBErrors::getUSBErrorString(errorCode);
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
@@ -453,24 +453,25 @@ void USBStorageProvider::listFolderContentsMethod(std::shared_ptr<RequestData> r
     int totalCount = 0;
     std::string fullPath;
     pbnjson::JValue contenResArr = pbnjson::Array();
-    std::shared_ptr<USBFolderContents> contsPtr = USBOperationHandler::getInstance().getListFolderContents(path);
+    std::shared_ptr<FolderContents> contsPtr = SAFUtilityOperation::getInstance().getListFolderContents(path);
     fullPath = contsPtr->getPath();
     totalCount = contsPtr->getTotalCount();
     if (contsPtr->getStatus() >= 0)
     {
         auto contVec = contsPtr->getContents();
-        int start = (offset > contVec.size())?(contVec.size() + 1):(offset - 1);
+        int start = (offset > (int)contVec.size())?(contVec.size() + 1):(offset - 1);
         start = (start < 0)?(contVec.size() + 1):(start);
         int end = ((limit + offset - 1) >  contVec.size())?(contVec.size()):(limit + offset - 1);
         end = (end < 0)?(contVec.size()):(end);
         LOG_DEBUG_SAF("%s: start:%d, end: %d", __FUNCTION__,start,end);
         for (int index = start; index < end; ++index)
         {
+            std::string size_str = std::to_string(contVec[index]->getSize());
             pbnjson::JValue contentObj = pbnjson::Object();
             contentObj.put("name", contVec[index]->getName());
             contentObj.put("path", contVec[index]->getPath());
             contentObj.put("type", contVec[index]->getType());
-            contentObj.put("size", int(contVec[index]->getSize()));
+            contentObj.put("size", size_str);
             contenResArr.append(contentObj);
         }
         status = true;
@@ -485,7 +486,7 @@ void USBStorageProvider::listFolderContentsMethod(std::shared_ptr<RequestData> r
     }
     else
     {
-        auto errorCode = getUSBErrorCode(contsPtr->getStatus());
+        auto errorCode = getInternalErrorCode(contsPtr->getStatus());
         auto errorStr  = SAFErrors::USBErrors::getUSBErrorString(errorCode);
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
@@ -519,13 +520,13 @@ void USBStorageProvider::renameMethod(std::shared_ptr<RequestData> reqData)
         return;
     }
 
-    std::unique_ptr<USBRename> renamePtr = USBOperationHandler::getInstance().rename(srcPath, destPath);
+    std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(srcPath, destPath);
     bool status = (renamePtr->getStatus() < 0)?(false):(true);
     pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", status);
     if (!status)
     {
-        auto errorCode = getUSBErrorCode(renamePtr->getStatus());
+        auto errorCode = getInternalErrorCode(renamePtr->getStatus());
         auto errorStr  = SAFErrors::USBErrors::getUSBErrorString(errorCode);
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);

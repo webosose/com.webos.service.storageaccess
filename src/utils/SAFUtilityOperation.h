@@ -40,12 +40,12 @@ private:
     std::string mPath;
     std::string mType;
     std::string mModTime;
-    uint32_t mSize;
+    uintmax_t mSize;
 
     void init();
     std::string getFileType(std::string);
     std::string getLastWrite(std::string);
-    uint32_t getFileSize(std::string);
+    uintmax_t getFileSize(std::string);
     std::string getModTime();
 
 public:
@@ -53,7 +53,7 @@ public:
     std::string getName() { return mName; }
     std::string getPath() { return mPath; }
     std::string getType() { return mType; }
-    uint32_t getSize() { return mSize; }
+    uintmax_t getSize() { return mSize; }
     std::string getLastModTime() { return mModTime; }
 };
 
