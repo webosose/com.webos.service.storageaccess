@@ -68,11 +68,12 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
         LOG_DEBUG_SAF("%s: start:%d, end: %d", __FUNCTION__,start,end);
         for (int index = start; index < end; ++index)
         {
+            std::string size_str = std::to_string(contVec[index]->getSize());
             pbnjson::JValue contentObj = pbnjson::Object();
             contentObj.put("name", contVec[index]->getName());
             contentObj.put("path", contVec[index]->getPath());
             contentObj.put("type", contVec[index]->getType());
-            contentObj.put("size", int(contVec[index]->getSize()));
+            contentObj.put("size", size_str);
             contenResArr.append(contentObj);
         }
         status = true;
