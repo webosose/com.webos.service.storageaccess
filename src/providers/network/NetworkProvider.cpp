@@ -15,6 +15,8 @@
 #include <SAFLog.h>
 #include "NetworkProvider.h"
 #include <future>
+#include <chrono>
+#include <iomanip>
 #include "gdrive/gdrive.hpp"
 #include "SAFUtilityOperation.h"
 #include "UpnpDiscover.h"
@@ -53,6 +55,16 @@ bool NetworkProvider::validateExtraCommand(std::vector<std::string> extraParams,
             return false;
     }
     return true;
+}
+
+std::string NetworkProvider::getTimestamp()
+{
+    const auto now = std::chrono::system_clock::now();
+    const auto nowAsTimeT = std::chrono::system_clock::to_time_t(now);
+    const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+    std::stringstream nowSs;
+    nowSs << std::put_time(std::localtime(&nowAsTimeT), "%T") << "_" << nowMs.count();
+    return nowSs.str();
 }
 
 void NetworkProvider::extraMethod(std::shared_ptr<RequestData> reqData)
@@ -119,7 +131,7 @@ void NetworkProvider::mountSambaServer(std::shared_ptr<RequestData> reqData)
         auto gid = getgid();
         auto uid = getuid();
         std::string securityMode = reqData->params["operation"]["payload"]["securityMode"].asString();
-        std::string path = "/tmp/" + ip + "_" +  std::to_string(uid);
+        std::string path = "/tmp/" + ip + "_" +  getTimestamp();
         std::string uniqueKey = ip + "_" + userName + "_" + sharePath;
         if (mSambaDriveMap.find(uniqueKey) != mSambaDriveMap.end())
         {
@@ -149,6 +161,7 @@ void NetworkProvider::mountSambaServer(std::shared_ptr<RequestData> reqData)
           mSambaDriveMap[uniqueKey] = generateUniqueSambaDriveId();
           mSambaSessionData[mSambaDriveMap[uniqueKey]] = reqData->sessionId;
           mSambaPathMap[mSambaDriveMap[uniqueKey]] = path;
+          SAFUtilityOperation::getInstance().setDriveDetails(SAMBA_NAME, mSambaPathMap);
           mntpathmap[path] = path;
           pbnjson::JValue responsePayObjArr = pbnjson::Array();
           pbnjson::JValue responsePayObj = pbnjson::Object();
@@ -197,7 +210,7 @@ pbnjson::JValue NetworkProvider::parseMediaServer(std::string url)
     responsePayObj.put("ip", ip);
     responsePayObj.put("port", port);
     responsePayObj.put("descriptionUrl", url);
-    responsePayObj.put("name", "MEDIA SERVER NAME");
+    responsePayObj.put("name", "MEDIA SERVER");
     responsePayObj.put("urn", "urn:schemas-upnp-org:service:ContentDirectory:1");
     LOG_DEBUG_SAF("Exiting function ");
     return responsePayObj;
@@ -263,6 +276,13 @@ void NetworkProvider::list(std::shared_ptr<RequestData> reqData)
         {
             respObj.put("errorCode", SAFErrors::INVALID_PARAM);
             respObj.put("errorText", "Invalid DriveID");
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+        if(!SAFUtilityOperation::getInstance().validateSambaPath(path, driveId))
+        {
+            respObj.put("errorCode", SAFErrors::INVALID_PATH);
+            respObj.put("errorText", "Invalid Path");
             reqData->cb(respObj, reqData->subs);
             return;
         }
@@ -382,9 +402,7 @@ void NetworkProvider::getProperties(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    //validateSambaOperation
-    //validateUpnpOperation
-    
+
     std::string path;
     if (type == UPNP_NAME)
     {
@@ -422,8 +440,9 @@ void NetworkProvider::getProperties(std::shared_ptr<RequestData> reqData)
         LOG_DEBUG_SAF("UPnP container Id : %d", containerId);
         auto devs = UpnpOperation::getInstance().listDirContents(containerId);
         LOG_DEBUG_SAF("UPnP devs size : %d", devs.size());
-        for (auto dev : devs)
+        if(!devs.empty())
         {
+            auto dev = devs[0];
             pbnjson::JValue contentObj = pbnjson::Object();
             contentObj.put("id", dev.id);
             contentObj.put("restricted", dev.restricted);
@@ -432,7 +451,45 @@ void NetworkProvider::getProperties(std::shared_ptr<RequestData> reqData)
             contentObj.put("childCount", dev.childCount);
             contentObj.put("url", dev.resUrl);
             attributesArr.append(contentObj);
-            break;
+        }
+    }
+    else if (type == SAMBA_NAME)
+    {
+        if(!SAFUtilityOperation::getInstance().validateSambaPath(path, driveId))
+        {
+            respObj.put("errorCode", SAFErrors::INVALID_PATH);
+            respObj.put("errorText", "Invalid Path");
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+        std::unique_ptr<InternalSpaceInfo> propPtr = SAFUtilityOperation::getInstance().getProperties(path);
+        bool status = (propPtr->getStatus() < 0)?(false):(true);
+        respObj.put("returnValue", status);
+        if (status)
+        {
+            pbnjson::JValue attributesArr = pbnjson::Array();
+            if (reqData->params.hasKey("storageType"))
+                respObj.put("storageType", reqData->params["storageType"].asString());
+            respObj.put("writable", propPtr->getIsWritable());
+            respObj.put("deletable", propPtr->getIsDeletable());
+            pbnjson::JValue attrObj = pbnjson::Object();
+            attrObj.put("LastModTimeStamp", propPtr->getLastModTime());
+            attributesArr.append(attrObj);
+            respObj.put("attributes", attributesArr);
+            if (path == mSambaPathMap[driveId])
+            {
+                respObj.put("totalSpace", int(propPtr->getCapacityMB()));
+                respObj.put("freeSpace", int(propPtr->getFreeSpaceMB()));
+            }
+        }
+        else
+        {
+            auto errorCode = getInternalErrorCode(propPtr->getStatus());
+            auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
+            respObj.put("errorCode", errorCode);
+            respObj.put("errorText", errorStr);
+            reqData->cb(respObj, reqData->subs);
+            return;
         }
     }
     respObj.put("attributes", attributesArr);
@@ -442,9 +499,14 @@ void NetworkProvider::getProperties(std::shared_ptr<RequestData> reqData)
 void NetworkProvider::copy(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+
+    if(!SAFUtilityOperation::getInstance().validateInterProviderOperation(reqData))
+        return;
+
     std::string srcdriveId = reqData->params["srcDriveId"].asString();
+    std::string destDriveId = reqData->params["destDriveId"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
-    if(!validateSambaOperation(srcdriveId,reqData->sessionId))
+    if((!validateSambaOperation(srcdriveId,reqData->sessionId)))
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
@@ -492,15 +554,21 @@ void NetworkProvider::copy(std::shared_ptr<RequestData> reqData)
 void NetworkProvider::move(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+
+    if(!SAFUtilityOperation::getInstance().validateInterProviderOperation(reqData))
+        return;
+
     std::string srcdriveId = reqData->params["srcDriveId"].asString();
+    std::string destDriveId = reqData->params["destDriveID"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
-    if(!validateSambaOperation(srcdriveId,reqData->sessionId))
+    if((!validateSambaOperation(srcdriveId,reqData->sessionId)))
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
         reqData->cb(respObj, reqData->subs);
         return;
     }
+
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();
     bool overwrite = false;
@@ -542,6 +610,7 @@ void NetworkProvider::remove(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     std::string driveId = reqData->params["driveId"].asString();
+    std::string path = reqData->params["path"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
     if(!validateSambaOperation(driveId,reqData->sessionId))
     {
@@ -550,7 +619,13 @@ void NetworkProvider::remove(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    std::string path = reqData->params["path"].asString();
+    if(!SAFUtilityOperation::getInstance().validateSambaPath(path, driveId))
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PATH);
+        respObj.put("errorText", "Invalid Path");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(path);
     bool status = (remPtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
@@ -570,6 +645,7 @@ void NetworkProvider::rename(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     std::string driveId = reqData->params["driveId"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string srcPath = reqData->params["path"].asString();
     if(!validateSambaOperation(driveId,reqData->sessionId))
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
@@ -577,8 +653,13 @@ void NetworkProvider::rename(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-
-    std::string srcPath = reqData->params["path"].asString();
+    if(!SAFUtilityOperation::getInstance().validateSambaPath(srcPath, driveId))
+    {
+        respObj.put("errorCode", SAFErrors::INVALID_PATH);
+        respObj.put("errorText", "Invalid Path");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
     std::string destPath = reqData->params["newName"].asString();
     std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(srcPath, destPath);
     bool status = (renamePtr->getStatus() < 0)?(false):(true);
@@ -650,6 +731,7 @@ void NetworkProvider::eject(std::shared_ptr<RequestData> reqData)
          mntpathmap.erase(mSambaPathMap[driveId]);
          mSambaSessionData.erase(driveId);
          mSambaPathMap.erase(driveId);
+         SAFUtilityOperation::getInstance().setDriveDetails(SAMBA_NAME, mSambaPathMap);
          respObj.put("returnValue", true);
          respObj.put("unmountPath: ", driveId);
      }

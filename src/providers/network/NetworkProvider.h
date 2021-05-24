@@ -60,6 +60,7 @@ private:
     std::map<std::string, std::string> mUpnpSessionData;
     std::map<std::string, std::string> mUpnpPathMap;
     std::string generateUniqueUpnpDriveId();
+    std::string getTimestamp();
     std::map<std::string, std::string> mntpathmap;
     bool validateSambaOperation(std::string, std::string);
     bool validateUpnpOperation(std::string, std::string);

@@ -41,6 +41,17 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     std::string driveId = reqData->params["driveId"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string path = reqData->params["path"].asString();
+    std::string sessionId = reqData->sessionId;
+
+    if(!SAFUtilityOperation::getInstance().validateInternalPath(path, sessionId))
+    {
+        respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
+        respObj.put("errorText", "Permission Denied");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
@@ -48,7 +59,6 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    std::string path = reqData->params["path"].asString();
     int offset = reqData->params["offset"].asNumber<int>();
     int limit = reqData->params["limit"].asNumber<int>();
     bool status = false;
@@ -167,6 +177,10 @@ void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
 
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();
+
+    if(!SAFUtilityOperation::getInstance().validateInterProviderOperation(reqData))
+        return;
+
     bool overwrite = false;
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
@@ -217,6 +231,10 @@ void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
 
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();
+
+    if(!SAFUtilityOperation::getInstance().validateInterProviderOperation(reqData))
+        return;
+
     bool overwrite = false;
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
@@ -257,6 +275,17 @@ void InternalStorageProvider::remove(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     std::string driveId = reqData->params["driveId"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string path = reqData->params["path"].asString();
+    std::string sessionId = reqData->sessionId;
+
+    if(!SAFUtilityOperation::getInstance().validateInternalPath(path, sessionId))
+    {
+        respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
+        respObj.put("errorText", "Permission Denied");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
@@ -265,7 +294,6 @@ void InternalStorageProvider::remove(std::shared_ptr<RequestData> reqData)
         return;
     }
 
-    std::string path = reqData->params["path"].asString();
     std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(path);
     bool status = (remPtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
@@ -284,6 +312,17 @@ void InternalStorageProvider::rename(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     std::string driveId = reqData->params["driveId"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
+    std::string srcPath = reqData->params["path"].asString();
+    std::string sessionId = reqData->sessionId;
+
+    if(!SAFUtilityOperation::getInstance().validateInternalPath(srcPath, sessionId))
+    {
+        respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
+        respObj.put("errorText", "Permission Denied");
+        reqData->cb(respObj, reqData->subs);
+        return;
+    }
+
     if(DEFAULT_INTERNAL_STORAGE_ID != driveId)
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
@@ -292,7 +331,6 @@ void InternalStorageProvider::rename(std::shared_ptr<RequestData> reqData)
         return;
     }
 
-    std::string srcPath = reqData->params["path"].asString();
     std::string destPath = reqData->params["newName"].asString();
     std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(srcPath, destPath);
     bool status = (renamePtr->getStatus() < 0)?(false):(true);

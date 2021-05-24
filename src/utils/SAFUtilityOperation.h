@@ -18,6 +18,7 @@
 #include <memory>
 #include <stdint.h>
 #include "SAFErrors.h"
+#include "SA_Common.h"
 
 enum InternalOperErrors
 {
@@ -164,6 +165,7 @@ class SAFUtilityOperation
 {
 private:
     SAFUtilityOperation();
+    std::map<std::string,std::string> mSambaDrivePathMap;
 public:
     static SAFUtilityOperation& getInstance();
     std::unique_ptr<FolderContents> getListFolderContents(std::string);
@@ -172,6 +174,10 @@ public:
     std::unique_ptr<InternalRemove> remove(std::string);
     std::unique_ptr<InternalMove> move(std::string, std::string, bool);
 	std::unique_ptr<InternalRename> rename(std::string, std::string);
+    void setDriveDetails(const std::string&, std::map<std::string,std::string>&);
+    bool validateInternalPath(std::string&, std::string&);
+    bool validateSambaPath(std::string&, std::string&);
+    bool validateInterProviderOperation(std::shared_ptr<RequestData>);
 };
 
 

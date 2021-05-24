@@ -363,6 +363,10 @@ void GDriveProvider::getProperties(std::shared_ptr<RequestData> reqData)
 void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+
+    if(!SAFUtilityOperation::getInstance().validateInterProviderOperation(reqData))
+        return;
+
     pbnjson::JValue respObj = pbnjson::Object();
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();
@@ -534,6 +538,10 @@ void GDriveProvider::copy(std::shared_ptr<RequestData> reqData)
 void GDriveProvider::move(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+
+    if(!SAFUtilityOperation::getInstance().validateInterProviderOperation(reqData))
+        return;
+
     pbnjson::JValue respObj = pbnjson::Object();
     std::string srcPath = reqData->params["srcPath"].asString();
     std::string destPath = reqData->params["destPath"].asString();

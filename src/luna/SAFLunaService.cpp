@@ -78,13 +78,6 @@ void SAFLunaService::getSubsDropped(void)
     return;
 }
 
-bool SAFLunaService::validatePath(std::string path)
-{
-    if ((path.find("/media") == 0) || (path.find("/tmp") == 0))
-        return true;
-    return false;
-}
-
 bool SAFLunaService::handleExtraCommand(LSMessage &message)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
@@ -135,15 +128,6 @@ bool SAFLunaService::list(LSMessage &message)
     int limit = -1;
     std::string storageType = requestObj["storageType"].asString();
     std::string folderPathString = requestObj["path"].asString();
-    if (getStorageDeviceType(storageType) == StorageType::INTERNAL)
-    {
-        if(!validatePath(folderPathString))
-        {
-            const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            return true;
-        }
-    }
     std::string storageIdStr = requestObj["driveId"].asString();
     LOG_DEBUG_SAF("listFolderContents : Folder Path : %s", folderPathString.c_str());
     requestObj["offset"].asNumber<int>(offset);
@@ -206,19 +190,6 @@ bool SAFLunaService::getProperties(LSMessage &message)
     }
     std::string storageType = requestObj["storageType"].asString();
     std::string driveId = requestObj["driveId"].asString();
-    if (requestObj.hasKey("path") && !requestObj["path"].asString().empty())
-    {
-        std::string path = requestObj["path"].asString();
-        if (getStorageDeviceType(storageType) == StorageType::INTERNAL)
-        {
-            if(!validatePath(path))
-            {
-                const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-                LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-                return true;
-            }
-        }
-    }
     if ((storageType.empty()) || (driveId.empty()))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_PARAM);
@@ -388,26 +359,6 @@ bool SAFLunaService::copy(LSMessage &message)
     std::string srcPath = requestObj["srcPath"].asString();
     std::string destPath = requestObj["destPath"].asString();
 
-    if (getStorageDeviceType(srcType) == StorageType::INTERNAL)
-    {
-        if(!validatePath(srcPath))
-        {
-            const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            return true;
-        }
-    }
-
-    if (getStorageDeviceType(desType) == StorageType::INTERNAL)
-    {
-        if(!validatePath(destPath))
-        {
-            const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            return true;
-        }
-    }
-
     if ((srcType.empty()) || (srcId.empty()) || (desType.empty()) || (desId.empty()) || (srcPath.empty()) || (destPath.empty()))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_PARAM);
@@ -474,26 +425,6 @@ bool SAFLunaService::move(LSMessage &message)
     std::string srcPath = requestObj["srcPath"].asString();
     std::string destPath = requestObj["destPath"].asString();
 
-    if (getStorageDeviceType(srcType) == StorageType::INTERNAL)
-    {
-        if(!validatePath(srcPath))
-        {
-            const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            return true;
-        }
-    }
-
-    if (getStorageDeviceType(desType) == StorageType::INTERNAL)
-    {
-        if(!validatePath(destPath))
-        {
-            const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            return true;
-        }
-    }
-
     if ((srcType.empty()) || (srcId.empty()) || (desType.empty()) || (desId.empty()) || (srcPath.empty()) || (destPath.empty()))
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_PARAM);
@@ -552,16 +483,6 @@ bool SAFLunaService::remove(LSMessage &message)
     std::string storageTypeString = requestObj["storageType"].asString();
     std::string folderpathString = requestObj["path"].asString();
     std::string storageIdString = requestObj["driveId"].asString();
-
-    if (getStorageDeviceType(storageTypeString) == StorageType::INTERNAL)
-    {
-        if(!validatePath(folderpathString))
-        {
-            const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            return true;
-        }
-    }
 
     if ((storageTypeString.empty()) || (storageIdString.empty()) || (folderpathString.empty()))
     {
@@ -676,16 +597,6 @@ bool SAFLunaService::rename(LSMessage &message)
     std::string driveId = requestObj["driveId"].asString();
     std::string path = requestObj["path"].asString();
     std::string newName = requestObj["newName"].asString();
-
-    if (getStorageDeviceType(storageType) == StorageType::INTERNAL)
-    {
-        if(!validatePath(path))
-        {
-            const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
-            return true;
-        }
-    }
 
     if (storageType.empty() || driveId.empty() || path.empty() || newName.empty())
     {

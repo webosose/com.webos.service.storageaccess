@@ -48,9 +48,12 @@ namespace OC
                     return m_lastResponseCode;
                 }
 
-				CurlClient()
-				{
-				}
+                CurlClient()
+                {
+                    m_useSsl = CURLUSESSL_TRY;
+                    long m_lastResponseCode = INVALID_RESPONSE_CODE;
+
+                }
 
                 CurlClient(CurlMethod method, const std::string &url)
                 {
@@ -189,9 +192,17 @@ namespace OC
                 // Represents contiguous memory to hold a HTTP response.
                 typedef struct _MemoryChunk
                 {
-                    _MemoryChunk() : size(0)
+                    _MemoryChunk() : memory(NULL), size(0)
                     {
                         memory = static_cast<char *>(malloc(1));
+                    }
+                    ~_MemoryChunk()
+                    {
+                        if(memory)
+                        {
+                            free(memory);
+                            memory = NULL;
+                        }
                     }
 
                     char *memory;

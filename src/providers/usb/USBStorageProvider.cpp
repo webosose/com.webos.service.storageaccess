@@ -273,6 +273,9 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
         return;
     }
 
+    if(!SAFUtilityOperation::getInstance().validateInterProviderOperation(reqData))
+        return;
+
     bool overwrite = false;
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
@@ -348,6 +351,9 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
+
+    if(!SAFUtilityOperation::getInstance().validateInterProviderOperation(reqData))
+        return;
 
     bool overwrite = false;
     if (reqData->params.hasKey("overwrite"))

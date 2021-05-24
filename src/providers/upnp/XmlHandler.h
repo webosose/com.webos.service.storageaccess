@@ -26,6 +26,7 @@ typedef struct sDirDetails
     std::string title;
     std::string className;
     std::string resUrl;
+    sDirDetails() : id(-1), restricted(-1), childCount(0) {}
 }DirDetails;
 
 class XMLHandler
