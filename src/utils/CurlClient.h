@@ -51,7 +51,7 @@ namespace OC
                 CurlClient()
                 {
                     m_useSsl = CURLUSESSL_TRY;
-                    long m_lastResponseCode = INVALID_RESPONSE_CODE;
+                    m_lastResponseCode = INVALID_RESPONSE_CODE;
 
                 }
 
