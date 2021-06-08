@@ -122,14 +122,14 @@ void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData
     if (reqData->params.hasKey("path"))
         path = reqData->params["path"].asString();
     if (path.empty())
-        path = DEFAULT_INTERNAL_PATH;
-    auto pos = path.find(DEFAULT_INTERNAL_PATH);
-    if ((pos == std::string::npos) || (pos != 0))
+        path = SAFUtilityOperation::getInstance().getInternalPath(reqData->sessionId);
+    if(!SAFUtilityOperation::getInstance().validateInternalPath(path, reqData->sessionId))
     {
         auto errorCode = SAFErrors::SAFErrors::INVALID_PATH;
         auto errorStr = SAFErrors::InternalErrors::getInternalErrorString(errorCode);
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
+        reqData->cb(respObj, reqData->subs);
         return;
     }
     std::unique_ptr<InternalSpaceInfo> propPtr = SAFUtilityOperation::getInstance().getProperties(path);
@@ -146,7 +146,7 @@ void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData
         attrObj.put("LastModTimeStamp", propPtr->getLastModTime());
         attributesArr.append(attrObj);
         respObj.put("attributes", attributesArr);
-        if (path == DEFAULT_INTERNAL_PATH)
+        if (path == SAFUtilityOperation::getInstance().getInternalPath(reqData->sessionId))
         {
             respObj.put("totalSpace", int(propPtr->getCapacityMB()));
             respObj.put("freeSpace", int(propPtr->getFreeSpaceMB()));
@@ -362,7 +362,8 @@ void InternalStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> re
     pbnjson::JValue internalRes = pbnjson::Object();
     internalRes.put("driveName", DEFAULT_INTERNAL_DRIVE_NAME);
     internalRes.put("driveId", DEFAULT_INTERNAL_STORAGE_ID);
-    internalRes.put("path", DEFAULT_INTERNAL_PATH);
+    internalRes.put("path",
+    SAFUtilityOperation::getInstance().getInternalPath(reqData->sessionId));
     internalResArr.append(internalRes);
     respObj.put("internal", internalResArr);
     reqData->params.put("response", respObj);

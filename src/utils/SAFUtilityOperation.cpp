@@ -47,17 +47,23 @@ bool SAFUtilityOperation::validateInternalPath(std::string& path, std::string& s
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     if ((path.find("/media") == 0) || (path.find("/tmp") == 0) || (path.find("/home/"+sessionId) == 0))
-        if(fs::exists(path))
+    {
+        std::error_code ec;
+        if(fs::exists(path, ec))
             return true;
+        LOG_DEBUG_SAF("%s, errorCode: %d", __FUNCTION__, ec.value());
+    }
     return false;
 }
 
 bool SAFUtilityOperation::validateSambaPath(std::string& path,std::string& driveId)
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
+    std::error_code ec;
     if((mSambaDrivePathMap.find(driveId) != mSambaDrivePathMap.end()) && (path.find(mSambaDrivePathMap[driveId]) == 0)
-        && fs::exists(path))
+        && fs::exists(path, ec))
         return true;
+    LOG_DEBUG_SAF("%s, errorCode: %d", __FUNCTION__, ec.value());
     return false;
 }
 
@@ -87,6 +93,7 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
     pbnjson::JValue respObj = pbnjson::Object();
     if((destStorageType == "network") && (destDriveId.find("UPNP") != std::string::npos))
     {
+        respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         respObj.put("errorText", "Operation not Permitted");
         reqData->cb(respObj, reqData->subs);
@@ -94,6 +101,7 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
     }
     if((destStorageType == "network") && (!validateSambaPath(destPath, destDriveId)))
     {
+        respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
         respObj.put("errorText", "No such file or directory at destination");
         reqData->cb(respObj, reqData->subs);
@@ -101,13 +109,16 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
     }
     else if((destStorageType == "internal") && (!validateInternalPath(destPath,sessionId)))
     {
+        respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
         respObj.put("errorText", "No such file or directory at destination");
         reqData->cb(respObj, reqData->subs);
         result = false;
     }
-    else if((srcStorageType == "network") && (!validateSambaPath(srcPath, destDriveId)))
+
+    if((srcStorageType == "network") && (!validateSambaPath(srcPath, srcDriveId)))
     {
+        respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
         respObj.put("errorText", "No such file or directory at source");
         reqData->cb(respObj, reqData->subs);
@@ -115,12 +126,91 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
     }
     else if((srcStorageType == "internal") && (!validateInternalPath(srcPath,sessionId)))
     {
+        respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
         respObj.put("errorText", "No such file or directory at source");
         reqData->cb(respObj, reqData->subs);
         result = false;
     }
     return result;
+}
+
+std::string SAFUtilityOperation::getInternalPath(std::string sessionId)
+{
+    LOG_DEBUG_SAF("Exiting function %s", __FUNCTION__);
+    std::string path = "/safInternal";
+    if (sessionId.find("root") != std::string::npos)
+        path = "/home/" + sessionId + path;
+    else
+        path = "/home/" + sessionId + "/rootfs" + path;
+    LOG_DEBUG_SAF("%s: file %s initiaized", __FUNCTION__, path.c_str());
+    std::error_code ec;
+    if (!fs::exists(path, ec))
+    {
+        LOG_DEBUG_SAF("%s: Before creating file: %s", __FUNCTION__, path.c_str());
+        try {
+            fs::create_directories(path);
+        }
+        catch(fs::filesystem_error& e) {
+            LOG_DEBUG_SAF("%s: Error in creating dir : %s", __FUNCTION__, e.what());
+            path.clear();
+            return path;
+        }
+        std::string cmd = "chown " + sessionId + ": " + path;
+        LOG_DEBUG_SAF("%s: Before exe cmd: %s", __FUNCTION__, cmd.c_str());
+        FILE *fp = popen(cmd.data(), "r");
+        if (fp != NULL){
+            LOG_DEBUG_SAF("%s: cmd: %s Success", __FUNCTION__, cmd.c_str());
+            pclose(fp);
+            fp = NULL;
+        }
+        else
+            LOG_DEBUG_SAF("%s: cmd: %s Fail", __FUNCTION__, cmd.c_str());
+        cmd = "chmod 700 " + path;
+        LOG_DEBUG_SAF("%s: Before exe cmd: %s", __FUNCTION__, cmd.c_str());
+        fp = popen(cmd.data(), "r");
+        if (fp != NULL)
+        {
+            LOG_DEBUG_SAF("%s: cmd: %s Success", __FUNCTION__, cmd.c_str());
+            pclose(fp);
+            fp = NULL;
+        }
+        else
+            LOG_DEBUG_SAF("%s: cmd: %s Fail", __FUNCTION__, cmd.c_str());
+    }
+    else
+        LOG_DEBUG_SAF("%s: file: %s already exists", __FUNCTION__, path.c_str());
+    LOG_DEBUG_SAF("%s, errorCode: %d", __FUNCTION__, ec.value());
+    return path;
+}
+
+void SAFUtilityOperation::setPathPerm(std::string path, std::string sessionId)
+{
+    std::error_code ec;
+    if (!fs::exists(path, ec))
+    {
+        LOG_DEBUG_SAF("%s, errorCode: %d", __FUNCTION__, ec.value());
+        return;
+    }
+    std::string cmd = "chown " + sessionId + ": " + path;
+    FILE *fp = popen(cmd.data(), "r");
+    if (fp != NULL){
+        LOG_DEBUG_SAF("%s: cmd: %s Success", __FUNCTION__, cmd.c_str());
+        pclose(fp);
+        fp = NULL;
+    }
+    else
+        LOG_DEBUG_SAF("%s: cmd: %s Fail", __FUNCTION__, cmd.c_str());
+    cmd = "chmod 700 " + path;
+    fp = popen(cmd.data(), "r");
+    if (fp != NULL)
+    {
+        LOG_DEBUG_SAF("%s: cmd: %s Success", __FUNCTION__, cmd.c_str());
+        pclose(fp);
+        fp = NULL;
+    }
+    else
+        LOG_DEBUG_SAF("%s: cmd: %s Fail", __FUNCTION__, cmd.c_str());
 }
 
 int getInternalErrorCode(int errorCode)

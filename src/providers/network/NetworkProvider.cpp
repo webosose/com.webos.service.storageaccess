@@ -125,12 +125,44 @@ void NetworkProvider::mountSambaServer(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
         pbnjson::JValue respObj = pbnjson::Object();
         std::string ip = reqData->params["operation"]["payload"]["ip"].asString();
-        std::string userName = reqData->params["operation"]["payload"]["userName"].asString();
-        std::string password = reqData->params["operation"]["payload"]["password"].asString();
+        std::string userName;
+        std::string password;
+
+        if(reqData->params["operation"]["payload"].hasKey("userName"))
+            userName = reqData->params["operation"]["payload"]["userName"].asString();
+        else
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorText", "User name not specified for Drive");
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+
+        if(reqData->params["operation"]["payload"].hasKey("password"))
+            password = reqData->params["operation"]["payload"]["password"].asString();
+        else
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorText", "Password not specified for Drive");
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+
         std::string sharePath = reqData->params["operation"]["payload"]["sharePath"].asString();
         auto gid = getgid();
         auto uid = getuid();
-        std::string securityMode = reqData->params["operation"]["payload"]["securityMode"].asString();
+        std::string securityMode;
+
+        if(reqData->params["operation"]["payload"].hasKey("securityMode"))
+            securityMode = reqData->params["operation"]["payload"]["securityMode"].asString();
+        else
+        {
+            respObj.put("returnValue", false);
+            respObj.put("errorText", "Security Mode not specified for Drive");
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
+
         std::string path = "/tmp/" + ip + "_" +  getTimestamp();
         std::string uniqueKey = ip + "_" + userName + "_" + sharePath;
         if (mSambaDriveMap.find(uniqueKey) != mSambaDriveMap.end())
@@ -144,7 +176,13 @@ void NetworkProvider::mountSambaServer(std::shared_ptr<RequestData> reqData)
         std::string pathCreate = "mkdir -p " + path;
         fp = popen(pathCreate.c_str(),"r");
         if(fp == NULL)
+        {
             LOG_DEBUG_SAF("mountSambaServer::File Open Failed");
+            respObj.put("returnValue", false);
+            respObj.put("errorText", "Cannot create mount path  directory");
+            reqData->cb(respObj, reqData->subs);
+            return;
+        }
         else
           pclose(fp);
        std::string src  = "//" + ip + "/" + userName;
@@ -158,6 +196,7 @@ void NetworkProvider::mountSambaServer(std::shared_ptr<RequestData> reqData)
 
        if (result == 0)
        {
+          SAFUtilityOperation::getInstance().setPathPerm(path, reqData->sessionId);
           mSambaDriveMap[uniqueKey] = generateUniqueSambaDriveId();
           mSambaSessionData[mSambaDriveMap[uniqueKey]] = reqData->sessionId;
           mSambaPathMap[mSambaDriveMap[uniqueKey]] = path;
@@ -712,7 +751,8 @@ void NetworkProvider::eject(std::shared_ptr<RequestData> reqData)
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
-        reqData->cb(respObj, reqData->subs);
+        reqData->params.put("response", respObj);
+        reqData->cb(reqData->params, std::move(reqData->subs));
         return;
     }
     for(auto entry : mSambaDriveMap)
