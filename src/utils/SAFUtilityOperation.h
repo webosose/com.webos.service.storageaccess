@@ -178,6 +178,8 @@ public:
     bool validateInternalPath(std::string&, std::string&);
     bool validateSambaPath(std::string&, std::string&);
     bool validateInterProviderOperation(std::shared_ptr<RequestData>);
+    std::string getInternalPath(std::string);
+    void setPathPerm(std::string, std::string);
 };
 
 
