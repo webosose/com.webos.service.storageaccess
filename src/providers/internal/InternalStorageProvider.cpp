@@ -350,8 +350,9 @@ void InternalStorageProvider::eject(std::shared_ptr<RequestData> reqData)
     pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", false);
     respObj.put("errorCode", SAFErrors::SAFErrors::UNKNOWN_ERROR);
-    respObj.put("errorText", SAFErrors::InternalErrors::getInternalErrorString(SAFErrors::SAFErrors::UNKNOWN_ERROR));
-    reqData->cb(respObj, reqData->subs);
+    respObj.put("errorText", "Not supported yet");
+    reqData->params.put("response", respObj);
+    reqData->cb(reqData->params, std::move(reqData->subs));
 }
 
 void InternalStorageProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)

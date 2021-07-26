@@ -115,8 +115,7 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
         reqData->cb(respObj, reqData->subs);
         result = false;
     }
-
-    if((srcStorageType == "network") && (!validateSambaPath(srcPath, srcDriveId)))
+    else if((srcStorageType == "network") && (!validateSambaPath(srcPath, srcDriveId)))
     {
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);

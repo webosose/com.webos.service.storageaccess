@@ -845,6 +845,12 @@ void GDriveProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
 void GDriveProvider::eject(std::shared_ptr<RequestData> reqData)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
+    pbnjson::JValue respObj = pbnjson::Object();
+    respObj.put("returnValue", false);
+    respObj.put("errorCode", SAFErrors::SAFErrors::UNKNOWN_ERROR);
+    respObj.put("errorText", "Not supported yet");
+    reqData->params.put("response", respObj);
+    reqData->cb(reqData->params, std::move(reqData->subs));
 }
 
 void GDriveProvider::insertMimeTypes() {
