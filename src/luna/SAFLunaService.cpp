@@ -96,7 +96,14 @@ bool SAFLunaService::handleExtraCommand(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
         return true;
     }
-    requestObj.put("storageType", requestObj["storageType"].asString());
+
+    std::string storageType = requestObj["storageType"].asString();
+    if(getStorageDeviceType(storageType) == StorageType::INVALID)
+    {
+        const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        return true;
+    }
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
     REQUEST_BUILDER(reqData, MethodType::EXTRA_METHOD, requestObj, SAFLunaService::onHandleExtraCommandReply)
     mDocumentProviderManager->addRequest(reqData);
@@ -538,14 +545,19 @@ bool SAFLunaService::eject(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_JSON_FORMAT);
         return true;
     }
-
+    std::string storageType = requestObj["storageType"].asString();
     if (requestObj["storageType"].asString().empty() || requestObj["driveId"].asString().empty())
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::INVALID_PARAM);
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
-
+    else if(getStorageDeviceType(storageType) == StorageType::INVALID)
+    {
+        const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
+        return true;
+    }
     std::shared_ptr<RequestData> reqData = std::make_shared<RequestData>();
     REQUEST_BUILDER(reqData, MethodType::EJECT_METHOD, requestObj, SAFLunaService::onEjectReply)
     mDocumentProviderManager->addRequest(reqData);
@@ -567,9 +579,9 @@ void SAFLunaService::onEjectReply(pbnjson::JValue rootObj, std::shared_ptr<LSUti
             USBPbnJsonParser parser;
             respObj = parser.ParseEject(rootObj);
         }
-        else if (type == StorageType::GDRIVE || type == StorageType::NETWORK)
+        else if (type == StorageType::GDRIVE || type == StorageType::NETWORK || type == StorageType::INTERNAL)
         {
-	    respObj = rootObj["response"];
+            respObj = rootObj["response"];
         }
         else
         {
