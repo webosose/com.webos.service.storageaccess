@@ -65,6 +65,7 @@ namespace OC
                     m_method = getCurlMethodString(method);
                     m_url = url;
                     m_useSsl = CURLUSESSL_TRY;
+                    m_lastResponseCode = INVALID_RESPONSE_CODE;
                 }
 
                 CurlClient &setRequestHeaders(std::vector<std::string> &requestHeaders)
