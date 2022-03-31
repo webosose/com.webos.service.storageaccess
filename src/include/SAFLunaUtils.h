@@ -1,4 +1,4 @@
-// Copyright (c) 2020 LG Electronics, Inc.
+// Copyright (c) 2020-2022 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #define SRC_INCLUDE_SAFLUNAUTILS_H_
 
 #include <string>
+#include <random>
 #include <pbnjson.hpp>
 #include <luna-service2/lunaservice.hpp>
 #include <SAFErrors.h>
@@ -95,7 +96,10 @@ namespace LSUtils
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
             "abcdefghijklmnopqrstuvwxyz";
             const size_t max_index = (sizeof(charset) - 1);
-            return charset[ rand() % max_index ];
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> distrib(0, max_index);
+            return charset[distrib(gen)];
         };
         std::string str(length,0);
         std::generate_n( str.begin(), length, randchar );
