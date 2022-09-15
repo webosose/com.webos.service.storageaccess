@@ -1,4 +1,4 @@
-// Copyright (c) 2020 LG Electronics, Inc.
+// Copyright (c) 2020-2022 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,6 +52,7 @@ class SAFLunaService: public LS::Handle, public StatusObserver
 public:
     SAFLunaService();
     virtual ~SAFLunaService();
+    void init();
     bool handleExtraCommand(LSMessage &message);
     void onHandleExtraCommandReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtils::ClientWatch> subs);
     bool list(LSMessage &message);

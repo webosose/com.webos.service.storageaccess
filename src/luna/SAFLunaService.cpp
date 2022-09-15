@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021 LG Electronics, Inc.
+// Copyright (c) 2020-2022 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,13 +25,16 @@ LSHandle* SAFLunaService::lsHandle = nullptr;
 SAFLunaService::SAFLunaService()
         : LS::Handle(LS::registerService(service_name.c_str()))
 {
-    SAFLunaService::lsHandle = this->get();
     registerService();
 }
 
 SAFLunaService::~SAFLunaService()
 {
     StatusHandler::GetInstance()->Unregister(this);
+}
+
+void SAFLunaService::init() {
+    SAFLunaService::lsHandle = this->get();
 }
 
 void SAFLunaService::registerService()

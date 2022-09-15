@@ -1,6 +1,6 @@
 // @@@LICENSE
 //
-//      Copyright (c) 2018 LG Electronics, Inc.
+//      Copyright (c) 2018-2022 LG Electronics, Inc.
 //
 // Confidential computer software. Valid license from LG required for
 // possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -97,6 +97,9 @@ gboolean ClientWatch::sendClientDroppedNotification(gpointer user_data)
         return FALSE;
 
     watch->mNotificationTimeout = 0;
+
+    if (watch->mCallback)
+        watch->mCallback();
 
     return FALSE;
 }

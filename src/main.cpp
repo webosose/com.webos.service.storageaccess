@@ -1,4 +1,4 @@
-// Copyright (c) 2020 LG Electronics, Inc.
+// Copyright (c) 2020-2022 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,64 +21,59 @@
 #include <SAFLog.h>
 
 static GMainLoop *mainLoop = nullptr;
-//std::unique_ptr<SAFLunaService> safLunaService;
 
-
-void term_handler(int signum)
-{
+void term_handler(int signum) {
     LOG_TRACE("Entering function %s", __FUNCTION__);
+
     const char *str = nullptr;
 
     switch (signum) {
-        case SIGTERM:
-            str = "SIGTERM";
-            break;
+    case SIGTERM:
+        str = "SIGTERM";
+        break;
 
-        case SIGABRT:
-            str = "SIGABRT";
-            break;
+    case SIGABRT:
+        str = "SIGABRT";
+        break;
 
-        default:
-            str = "Unknown";
-            break;
+    default:
+        str = "Unknown";
+        break;
     }
 
-    LOG_DEBUG_SAF("signal received.. signal[%s]", str);
+    LOG_ERROR_SAF("SAF_ERROR", 0, "signal received.. signal[%s]", str);
     g_main_loop_quit(mainLoop);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     LOG_TRACE("Entering function %s", __FUNCTION__);
 
-    (void)signal(SIGTERM, term_handler);
-    (void)signal(SIGABRT, term_handler);
+    try {
+        (void) signal(SIGTERM, term_handler);
+        (void) signal(SIGABRT, term_handler);
 
-    GMainLoop *mainLoop = g_main_loop_new(nullptr, FALSE);
-    if (!mainLoop) {
-        LOG_DEBUG_SAF("Failed to create g_main_loop!");
-        return EXIT_FAILURE;
-    }
+        mainLoop = g_main_loop_new(NULL, FALSE);
+        if (!mainLoop) {
+            LOG_ERROR_SAF("SAF_ERROR", 0, "Failed to create g_main_loop!");
+            return EXIT_FAILURE;
+        }
 
-    std::unique_ptr<SAFManager>safManager(new SAFManager());
-    try{
-          bool init_result = false;
-          if(safManager){
-            init_result = safManager->init(mainLoop);
-          }
-          if(!safManager || !init_result)
-          {
-             LOG_DEBUG_SAF("SAF Manager registration failed");
-             g_main_loop_unref(mainLoop);
-             return EXIT_FAILURE;
-          }
+        SAFManager safManager;
+        bool init_result = safManager.init(mainLoop);
+        if (!init_result) {
+            LOG_ERROR_SAF("SAF_ERROR", 0, "SAF Manager registration failed");
+            g_main_loop_unref(mainLoop);
+            return EXIT_FAILURE;
+        }
+
+        g_main_loop_run(mainLoop);
+        g_main_loop_unref(mainLoop);
+    } catch (const std::length_error &le) {
+        LOG_ERROR_SAF("SAF_ERROR", 0, "Failed to Length error: %s", le.what());
+    } catch (const LS::Error &error) {
+        LOG_ERROR_SAF("SAF_ERROR", 0, "ERROR: init thrown an exception: %s",
+                error.what());
     }
-    catch (LS::Error &lunaError) {
-        LOG_ERROR_SAF( "safManager:", 0, "ERROR: init thrown an exception" );
-    }
-    g_main_loop_run(mainLoop);
-    safManager.reset();
-    g_main_loop_unref(mainLoop);
 
     return 0;
 }
