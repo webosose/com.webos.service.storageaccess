@@ -63,7 +63,7 @@ int UpnpOperation::getNextDirId(int pId, std::string nextDir)
         printf("resXml 3 %s", resXml.c_str());
         xmlHandObj.setXmlContent(resXml);
         auto dirs = xmlHandObj.getCurDirDetails(pId);
-        for (auto dir : dirs)
+        for (const auto& dir : dirs)
         {
             if (dir.title == nextDir)
             {

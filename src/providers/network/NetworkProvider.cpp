@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020-2021 LG Electronics, Inc.
+ * Copyright (c) 2020-2022 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -264,7 +264,7 @@ void NetworkProvider::discoverUPnPMediaServer(std::shared_ptr<RequestData> reqDa
     UpnpDiscover::getInstance().startScan();
     auto &devs = UpnpDiscover::getInstance().getScannedDevices();
     LOG_DEBUG_SAF("UPnP device size : %d", devs.size());
-    for (auto dev : devs)
+    for (const auto& dev : devs)
     {
         LOG_DEBUG_SAF("UPnP device %s", dev.c_str());
         pbnjson::JValue mediaObj = pbnjson::Object();
