@@ -397,7 +397,7 @@ void NetworkProvider::list(std::shared_ptr<RequestData> reqData)
         LOG_DEBUG_SAF("UPnP container Id : %d", containerId);
         auto devs = UpnpOperation::getInstance().listDirContents(containerId);
         LOG_DEBUG_SAF("UPnP devs size : %d", devs.size());
-        for (auto dev : devs)
+        for (const auto& dev : devs)
         {
             LOG_DEBUG_SAF("UPnP file name %s", dev.title.c_str());
             pbnjson::JValue contentObj = pbnjson::Object();
