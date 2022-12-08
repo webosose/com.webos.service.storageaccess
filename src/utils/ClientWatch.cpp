@@ -92,10 +92,9 @@ void ClientWatch::startWatching()
 
 gboolean ClientWatch::sendClientDroppedNotification(gpointer user_data)
 {
-    ClientWatch *watch = static_cast<ClientWatch*>(user_data);
-    if (nullptr == watch)
+    if (nullptr == user_data)
         return FALSE;
-
+    ClientWatch *watch = static_cast<ClientWatch*>(user_data);
     watch->mNotificationTimeout = 0;
 
     if (watch->mCallback)
