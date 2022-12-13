@@ -134,7 +134,8 @@ int CurlClient::doInternalRequest(const std::string &url,
             m_lastResponseCode = INVALID_RESPONSE_CODE;
         }
 
-        response = rsp_body.memory;
+        if (rsp_body.memory)
+            response = rsp_body.memory;
 
         decomposeHeader(rsp_header.memory, outHeaders);
     }

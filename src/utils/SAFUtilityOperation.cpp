@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021 LG Electronics, Inc.
+ * Copyright (c) 2021-2022 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -313,7 +313,9 @@ std::string FolderContent::getModTime()
             using namespace std::chrono_literals;
             auto ftime = fs::last_write_time(mPath);
             auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
-            timeStamp = ctime((time_t*)&timeMs);
+            char *sTimeMs = ctime((time_t*)&timeMs);
+            if (sTimeMs)
+                timeStamp = sTimeMs;
         }
     }
     catch(fs::filesystem_error& e)
@@ -427,7 +429,9 @@ std::string InternalSpaceInfo::getLastModTime()
             using namespace std::chrono_literals;
             auto ftime = fs::last_write_time(mPath);
             auto timeMs = std::chrono::time_point_cast<std::chrono::milliseconds>(ftime);
-            timeStamp = ctime((time_t*)&timeMs);
+            char *sTimeMs = ctime((time_t*)&timeMs);
+            if (sTimeMs)
+                timeStamp = sTimeMs;
         }
         else
             mStatus = INVALID_PATH;
