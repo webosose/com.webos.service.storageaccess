@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021 LG Electronics, Inc.
+ * Copyright (c) 2021-2022 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -113,16 +113,22 @@ void XMLHandler::getElementDetails(xmlNode* a_node, std::string nodeName)
       std::cout << __func__ << " : " << nodeVal << ", Type = " << cur_node->type << std::endl;
       if ((cur_node->type == XML_ELEMENT_NODE) && (nodeVal == nodeName))
       {
-         mRes = ((const char*)xmlNodeGetContent(cur_node));
-         return; 
+          xmlChar* content = xmlNodeGetContent(cur_node);
+          if (content) {
+              mRes = std::string((const char*)content);
+              return;
+         }
       }
       if (nodeName == nodeVal)
       {
-         mRes = ((const char*)xmlNodeListGetString(mDoc, cur_node->xmlChildrenNode, 1));
-         return;
+          xmlChar* value = xmlNodeListGetString(mDoc, cur_node->xmlChildrenNode, 1);
+          if (value) {
+              mRes = std::string((const char*)value);
+              return;
+          }
       }
       getElementDetails(cur_node->children, nodeName);
-   }
+    }
 }
 
 std::string XMLHandler::getValue(std::string nodeName)
@@ -171,13 +177,22 @@ void XMLHandler::getCurDirElementDetails(xmlNode* a_node, int parentID)
              xmlNode *tmp_node = cur_node->children;
              while(tmp_node && tmp_node->name && (tmp_node->type == XML_ELEMENT_NODE))
              {
-                 if (std::string((const char*)tmp_node->name) == "title")
-                     dirDet.title = ((const char*)xmlNodeGetContent(tmp_node));
-             else if (std::string((const char*)tmp_node->name) == "class")
-                     dirDet.className = ((const char*)xmlNodeGetContent(tmp_node));
-             else if (std::string((const char*)tmp_node->name) == "res")
-                     dirDet.resUrl = ((const char*)xmlNodeGetContent(tmp_node));
-                tmp_node = tmp_node->next;
+                 if (std::string((const char*)tmp_node->name) == "title") {
+                     xmlChar* content = xmlNodeGetContent(tmp_node);
+                     if (content)
+                         dirDet.title = std::string((const char*)content);
+                 }
+                 else if (std::string((const char*)tmp_node->name) == "class") {
+                     xmlChar* content = xmlNodeGetContent(tmp_node);
+                     if (content)
+                         dirDet.className = std::string((const char*)content);
+                 }
+                 else if (std::string((const char*)tmp_node->name) == "res") {
+                     xmlChar* content = xmlNodeGetContent(tmp_node);
+                     if (content)
+                         dirDet.resUrl = std::string((const char*)content);
+                 }
+                 tmp_node = tmp_node->next;
              }
              }
          mCurDirDetails.push_back(dirDet);
@@ -206,10 +221,16 @@ void XMLHandler::getMatchingElementDetails(xmlNode* a_node, std::string nodeName
          xmlNode *tmp_node = cur_node->children;
      while(tmp_node && tmp_node->name && (tmp_node->type == XML_ELEMENT_NODE))
      {
-         if (std::string((const char*)tmp_node->name) == matchNode)
-         matchData = ((const char*)xmlNodeGetContent(tmp_node));
-             else if (std::string((const char*)tmp_node->name) == nodeName)
-             nodeData = ((const char*)xmlNodeGetContent(tmp_node));
+         if (std::string((const char*)tmp_node->name) == matchNode) {
+             xmlChar* content = xmlNodeGetContent(tmp_node);
+             if (content)
+                 matchData = std::string((const char*)content);
+         }
+         else if (std::string((const char*)tmp_node->name) == nodeName) {
+             xmlChar* content = xmlNodeGetContent(tmp_node);
+             if (content)
+                 nodeData = std::string((const char*)content);
+         }
          tmp_node = tmp_node->next;
      }
      if (!matchData.empty() && !nodeData.empty() && (matchData.find(matchVal) != std::string::npos))
