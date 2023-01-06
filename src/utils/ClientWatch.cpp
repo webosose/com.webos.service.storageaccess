@@ -10,6 +10,7 @@
 //
 // LICENSE@@@
 
+#include <SAFLog.h>
 #include "ClientWatch.h"
 
 namespace LSUtils
@@ -31,6 +32,7 @@ ClientWatch::ClientWatch(LSHandle *handle, LSMessage *message, ClientWatchStatus
 
 ClientWatch::~ClientWatch()
 {
+    LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "[mNotificationTimeout:%u]%s():%d",mNotificationTimeout,__FUNCTION__, __LINE__);
     // Don't send any pending notifications as that will fail
     if (mNotificationTimeout)
         g_source_remove(mNotificationTimeout);
@@ -92,19 +94,19 @@ void ClientWatch::startWatching()
 
 gboolean ClientWatch::sendClientDroppedNotification(gpointer user_data)
 {
+    LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "%s():%d",__FUNCTION__, __LINE__);
     if (nullptr == user_data)
         return FALSE;
+
     ClientWatch *watch = static_cast<ClientWatch*>(user_data);
     watch->mNotificationTimeout = 0;
-
-    if (watch->mCallback)
-        watch->mCallback();
 
     return FALSE;
 }
 
 void ClientWatch::triggerClientDroppedNotification()
 {
+    LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "[mNotificationTimeout:%u]%s():%d",mNotificationTimeout,__FUNCTION__, __LINE__);
     if (mNotificationTimeout)
         return;
 
@@ -112,10 +114,12 @@ void ClientWatch::triggerClientDroppedNotification()
     // a deadlock when someone tries to destroy us while stilling being
     // in the callback from ls2
     mNotificationTimeout = g_timeout_add(0, &ClientWatch::sendClientDroppedNotification, this);
+    LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "[mNotificationTimeout:%u]%s():%d",mNotificationTimeout,__FUNCTION__, __LINE__);
 }
 
 void ClientWatch::notifyClientDisconnected()
 {
+    LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "%s():%d",__FUNCTION__, __LINE__);
     triggerClientDroppedNotification();
 }
 
@@ -126,8 +130,10 @@ void ClientWatch::notifyClientCanceled(const char *clientToken)
 
     const char *messageToken = LSMessageGetUniqueToken(mMessage);
 
-    if(messageToken && clientToken && !g_strcmp0(messageToken, clientToken))
+    if(messageToken && clientToken && !g_strcmp0(messageToken, clientToken)){
+        LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "%s():%d",__FUNCTION__, __LINE__);
         triggerClientDroppedNotification();
+    }
 }
 
 } // namespace LS

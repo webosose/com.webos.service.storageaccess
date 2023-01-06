@@ -26,5 +26,6 @@ bool SAFManager::init(GMainLoop *_mainLoop) {
     mainLoop = _mainLoop;
     mLunaService.init();
     mLunaService.attachToLoop(mainLoop);
+    LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "After attached to mainloop: %d", __LINE__);
     return true;
 }
