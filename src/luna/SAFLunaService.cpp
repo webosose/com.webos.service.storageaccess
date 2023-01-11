@@ -286,6 +286,7 @@ void SAFLunaService::onListOfStoragesReply(pbnjson::JValue rootObj, std::shared_
     LS::Message request(subs->getMessage());
     pbnjson::JValue respObj = pbnjson::Object();
     StorageType type = getStorageDeviceType(rootObj);
+    LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "storageType:%d[%s():%d]",type ,__FUNCTION__, __LINE__);
     if(type == StorageType::USB)
     {
         if(rootObj.hasKey("response"))

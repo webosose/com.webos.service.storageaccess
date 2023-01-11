@@ -67,6 +67,7 @@ int main(int argc, char **argv) {
         }
 
         g_main_loop_run(mainLoop);
+        LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "Going to Unref mainloop: %d", __LINE__);
         g_main_loop_unref(mainLoop);
     } catch (const std::length_error &le) {
         LOG_ERROR_SAF("SAF_ERROR", 0, "Failed to Length error: %s", le.what());
