@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020-2021 LG Electronics, Inc.
+ * Copyright (c) 2020-2023 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -30,10 +30,7 @@ GDriveProvider::GDriveProvider() : mQuit(false)
 GDriveProvider::~GDriveProvider()
 {
     mQuit = true;
-    if (mDispatcherThread.joinable())
-    {
-        mDispatcherThread.join();
-    }
+    mCondVar.notify_one();
 }
 
 std::string GDriveProvider::generateDriveId()
@@ -993,8 +990,12 @@ string GDriveProvider::getFileID(GDRIVE::Drive service, const vector<string>& fi
 void GDriveProvider::addRequest(std::shared_ptr<RequestData>& reqData)
 {
     LOG_DEBUG_SAF("GDriveProvider :: Entering function %s", __FUNCTION__);
-    mQueue.push_back(std::move(reqData));
+    {
+        std::unique_lock < std::mutex > lock(mMutex);
+        mQueue.push_back(std::move(reqData));
+    }
     mCondVar.notify_one();
+
 }
 
 void GDriveProvider::handleRequests(std::shared_ptr<RequestData> reqData)
@@ -1082,9 +1083,10 @@ void GDriveProvider::dispatchHandler()
         LOG_DEBUG_SAF("Dispatch notif received : %d, mQuit: %d", mQueue.size(), mQuit);
         if (mQueue.size() && !mQuit)
         {
-            lock.unlock();
-            handleRequests(std::move(mQueue.front()));
+            auto request = mQueue.front();
             mQueue.erase(mQueue.begin());
+            lock.unlock();
+            handleRequests(request);
             lock.lock();
         }
     } while (!mQuit);

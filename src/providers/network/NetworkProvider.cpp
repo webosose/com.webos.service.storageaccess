@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020-2022 LG Electronics, Inc.
+ * Copyright (c) 2020-2023 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -33,10 +33,7 @@ NetworkProvider::NetworkProvider() : mQuit(false)
 NetworkProvider::~NetworkProvider()
 {
     mQuit = true;
-    if (mDispatcherThread.joinable())
-    {
-        mDispatcherThread.join();
-    }
+    mCondVar.notify_one();
 }
 
 void NetworkProvider::setErrorMessage(shared_ptr<ValuePairMap> valueMap, string errorText)
@@ -791,7 +788,10 @@ void NetworkProvider::eject(std::shared_ptr<RequestData> reqData)
 void NetworkProvider::addRequest(std::shared_ptr<RequestData>& reqData)
 {
     LOG_DEBUG_SAF("NetworkProvider :: Entering function %s", __FUNCTION__);
-    mQueue.push_back(std::move(reqData));
+    {
+        std::unique_lock < std::mutex > lock(mMutex);
+        mQueue.push_back(std::move(reqData));
+    }
     mCondVar.notify_one();
 }
 
@@ -880,9 +880,10 @@ void NetworkProvider::dispatchHandler()
         LOG_DEBUG_SAF("Dispatch notify received : %d, mQuit: %d", mQueue.size(), mQuit);
         if (mQueue.size() && !mQuit)
         {
-            lock.unlock();
-            handleRequests(std::move(mQueue.front()));
+            auto request = mQueue.front();
             mQueue.erase(mQueue.begin());
+            lock.unlock();
+            handleRequests(request);
             lock.lock();
         }
     } while (!mQuit);
