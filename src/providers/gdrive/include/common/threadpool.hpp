@@ -41,14 +41,13 @@ class ThreadPool {
             for(i = 0; i < _pool_size; i ++ ) {
                 int ret = pthread_create(&_pool[i], NULL, _run_thread, (void*)this);
                 if (ret != 0) {
-                    pthread_mutex_unlock(&_lock);
                     destroy();
                     break;
                 } else {
                     _active_count ++;
                 }
             }
-            if (i == _pool_size) pthread_mutex_unlock(&_lock);
+            pthread_mutex_unlock(&_lock);
         }
 
         void destroy(int shutdown = TP_IMMEDIATE_SHUTDOWN) {
@@ -57,8 +56,10 @@ class ThreadPool {
             } else {
                 _shutdown = shutdown;
             }
-            for(size_t i = 0; i < _active_count; i ++ ) {
-                pthread_join(_pool[i], NULL);
+            if(_pool != NULL) {
+                for(size_t i = 0; i < _active_count; i ++ ) {
+                    pthread_join(_pool[i], NULL);
+                }
             }
             _task_queue.clear();
             free(_pool);
