@@ -872,7 +872,8 @@ void NetworkProvider::dispatchHandler()
 {
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    std::unique_lock < std::mutex > lock(mMutex);
+    std::unique_lock < std::mutex > lock(mMutex, std::defer_lock);
+    lock.lock();
     do {
         mCondVar.wait(lock, [this] {
             return (mQueue.size() || mQuit);
