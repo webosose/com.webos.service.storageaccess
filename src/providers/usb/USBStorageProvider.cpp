@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021-2023 LG Electronics, Inc.
+ * Copyright (c) 2021-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -54,7 +54,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-        ctxPtr->reqData->cb(respObj, ctxPtr->reqData->subs);
+        ctxPtr->reqData->cb(std::move(respObj), ctxPtr->reqData->subs);
         return;
     }
 
@@ -64,7 +64,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::DRIVE_NOT_MOUNTED);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::DRIVE_NOT_MOUNTED));
-        ctxPtr->reqData->cb(respObj, ctxPtr->reqData->subs);
+        ctxPtr->reqData->cb(std::move(respObj), ctxPtr->reqData->subs);
         return;
     }
 
@@ -75,7 +75,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
         errObj.put("returnValue", false);
         errObj.put("errorCode", SAFErrors::USBErrors::MORE_PARTITIONS_IN_USB);
         errObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::MORE_PARTITIONS_IN_USB));
-        ctxPtr->reqData->cb(errObj, ctxPtr->reqData->subs);
+        ctxPtr->reqData->cb(std::move(errObj), ctxPtr->reqData->subs);
         return;
     }
     else if(devDriveName.compare("NO SUB") == 0)
@@ -84,7 +84,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
         errObj.put("returnValue", false);
         errObj.put("errorCode", SAFErrors::USBErrors::USB_SUB_STORAGE_NOT_EXISTS);
         errObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_SUB_STORAGE_NOT_EXISTS));
-        ctxPtr->reqData->cb(errObj, ctxPtr->reqData->subs);
+        ctxPtr->reqData->cb(std::move(errObj), ctxPtr->reqData->subs);
         return;
     }
 
@@ -117,7 +117,7 @@ void USBStorageProvider::getPropertiesMethod(std::shared_ptr<RequestData> data)
             respObj.put("errorCode", errorCode);
             respObj.put("errorText", errorStr);
         }
-        ctxPtr->reqData->cb(respObj, ctxPtr->reqData->subs);
+        ctxPtr->reqData->cb(std::move(respObj), ctxPtr->reqData->subs);
         return;
     }
     else
@@ -179,7 +179,7 @@ bool USBStorageProvider::onListStoragesMethodReply(LSHandle *sh, LSMessage *mess
         self->cleanDeviceInfo();
         self->populateDeviceInfo(root);
         USBPbnJsonParser usbParser;
-        pbnjson::JValue responseObj = usbParser.ParseListOfStorages(root);
+        pbnjson::JValue responseObj = usbParser.ParseListOfStorages(std::move(root));
         ctxPtr->reqData->params.put("response", responseObj);
         ctxPtr->reqData->params.put("storageType","usb");
         ctxPtr->reqData->cb(ctxPtr->reqData->params, ctxPtr->reqData->subs);
@@ -191,13 +191,13 @@ void USBStorageProvider::ejectMethod(std::shared_ptr<RequestData> data)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
     std::string storageid = data->params["driveId"].asString();
-    if(isStorageIdExists(storageid) == false)
+    if(isStorageIdExists(std::move(storageid)) == false)
     {
         pbnjson::JValue respObj = pbnjson::Object();
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-        data->cb(respObj, data->subs);
+        data->cb(std::move(respObj), data->subs);
         return;
     }
 
@@ -207,13 +207,13 @@ void USBStorageProvider::ejectMethod(std::shared_ptr<RequestData> data)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::USB_DRIVE_ALREADY_EJECTED);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_DRIVE_ALREADY_EJECTED));
-        data->cb(respObj, data->subs);
+        data->cb(std::move(respObj), data->subs);
         return;
     }
 
     std::string driveId = data->params["driveId"].asString();
     std::string uri = SAF_USB_EJECT_METHOD;
-    std::string payload = "{\"deviceNum\": " + std::to_string(getStorageNumber(driveId)) + "}";
+    std::string payload = "{\"deviceNum\": " + std::to_string(getStorageNumber(std::move(driveId))) + "}";
     LSError lserror;
     (void)LSErrorInit(&lserror);
     ReqContext* ctxPtr = new ReqContext();
@@ -242,7 +242,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
@@ -254,7 +254,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
             respObj.put("returnValue", false);
             respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
             respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-            reqData->cb(respObj, reqData->subs);
+            reqData->cb(std::move(respObj), reqData->subs);
             return;
         }
     }
@@ -266,7 +266,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::DRIVE_NOT_MOUNTED);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::DRIVE_NOT_MOUNTED));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
@@ -277,7 +277,7 @@ void USBStorageProvider::copyMethod(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalCopy> copyPtr = SAFUtilityOperation::getInstance().copy(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalCopy> copyPtr = SAFUtilityOperation::getInstance().copy(std::move(srcPath), std::move(destPath), overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -321,7 +321,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
@@ -333,7 +333,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
             respObj.put("returnValue", false);
             respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
             respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-            reqData->cb(respObj, reqData->subs);
+            reqData->cb(std::move(respObj), reqData->subs);
             return;
         }
     }
@@ -345,7 +345,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::DRIVE_NOT_MOUNTED);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::DRIVE_NOT_MOUNTED));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
@@ -356,7 +356,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(std::move(srcPath), std::move(destPath), overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -379,7 +379,7 @@ void USBStorageProvider::moveMethod(std::shared_ptr<RequestData> reqData)
             respObj.put("errorText", errorStr);
         }
         if (retStatus != prevStatus)
-            reqData->cb(respObj, reqData->subs);
+            reqData->cb(std::move(respObj), reqData->subs);
         if ((retStatus >= 100) || (retStatus < 0))
             break;
         else
@@ -398,7 +398,7 @@ void USBStorageProvider::removeMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
@@ -408,11 +408,11 @@ void USBStorageProvider::removeMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::DRIVE_NOT_MOUNTED);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::DRIVE_NOT_MOUNTED));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
-    std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(path);
+    std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(std::move(path));
     bool status = (remPtr->getStatus() < 0)?(false):(true);
     pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", status);
@@ -423,7 +423,7 @@ void USBStorageProvider::removeMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void USBStorageProvider::listFolderContentsMethod(std::shared_ptr<RequestData> reqData)
@@ -438,7 +438,7 @@ void USBStorageProvider::listFolderContentsMethod(std::shared_ptr<RequestData> r
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
@@ -448,7 +448,7 @@ void USBStorageProvider::listFolderContentsMethod(std::shared_ptr<RequestData> r
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::DRIVE_NOT_MOUNTED);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::DRIVE_NOT_MOUNTED));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
@@ -456,7 +456,7 @@ void USBStorageProvider::listFolderContentsMethod(std::shared_ptr<RequestData> r
     int totalCount = 0;
     std::string fullPath;
     pbnjson::JValue contenResArr = pbnjson::Array();
-    std::shared_ptr<FolderContents> contsPtr = SAFUtilityOperation::getInstance().getListFolderContents(path);
+    std::shared_ptr<FolderContents> contsPtr = SAFUtilityOperation::getInstance().getListFolderContents(std::move(path));
     fullPath = contsPtr->getPath();
     totalCount = contsPtr->getTotalCount();
     if (contsPtr->getStatus() >= 0)
@@ -494,7 +494,7 @@ void USBStorageProvider::listFolderContentsMethod(std::shared_ptr<RequestData> r
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void USBStorageProvider::renameMethod(std::shared_ptr<RequestData> reqData)
@@ -509,7 +509,7 @@ void USBStorageProvider::renameMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::USB_STORAGE_NOT_EXISTS));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
@@ -519,11 +519,11 @@ void USBStorageProvider::renameMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::USBErrors::DRIVE_NOT_MOUNTED);
         respObj.put("errorText", SAFErrors::USBErrors::getUSBErrorString(SAFErrors::USBErrors::DRIVE_NOT_MOUNTED));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         return;
     }
 
-    std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(srcPath, destPath);
+    std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(std::move(srcPath), std::move(destPath));
     bool status = (renamePtr->getStatus() < 0)?(false):(true);
     pbnjson::JValue respObj = pbnjson::Object();
     respObj.put("returnValue", status);
@@ -534,7 +534,7 @@ void USBStorageProvider::renameMethod(std::shared_ptr<RequestData> reqData)
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void USBStorageProvider::addRequest(std::shared_ptr<RequestData>& reqData)
@@ -719,7 +719,7 @@ void USBStorageProvider::dispatchHandler()
             auto request = mQueue.front();
             mQueue.erase(mQueue.begin());
             lock.unlock();
-            handleRequests(request);
+            handleRequests(std::move(request));
             lock.lock();
         }
     } while (!mQuit);
@@ -780,7 +780,7 @@ void USBStorageProvider::populateDeviceInfo(pbnjson::JValue pbnObj)
             }
         }
         if(infoObj[i].hasKey("serialNumber"))
-            deviceInfo->usbStorages[infoObj[i]["serialNumber"].asString()] = devPtr;
+            deviceInfo->usbStorages[infoObj[i]["serialNumber"].asString()] = std::move(devPtr);
     }
 }
 
@@ -819,9 +819,9 @@ std::string USBStorageProvider::getDriveName(std::string driveId)
     }
     else
     {
-        mainId = driveId;
+        mainId = std::move(driveId);
     }
-    return getDriveName(mainId, subId);
+    return getDriveName(std::move(mainId), std::move(subId));
 }
 
 std::string USBStorageProvider::getDriveName(std::string driveId, std::string subId)
@@ -882,7 +882,7 @@ bool USBStorageProvider::isStorageIdExists(std::string driveId)
     }
     else
     {
-        mainId = driveId;
+        mainId = std::move(driveId);
     }
     std::map<std::string, std::shared_ptr<USBDeviceInfo>>::iterator it;
     for (it = deviceInfo->usbStorages.begin(); it != deviceInfo->usbStorages.end(); ++it)
@@ -927,7 +927,7 @@ bool USBStorageProvider::isStorageDriveMounted(std::string actualDevId)
     }
     else
     {
-        mainId = actualDevId;
+        mainId = std::move(actualDevId);
     }
     std::map<std::string, std::shared_ptr<USBDeviceInfo>>::iterator it;
     for (it = deviceInfo->usbStorages.begin(); it != deviceInfo->usbStorages.end(); ++it)
@@ -971,7 +971,7 @@ int USBStorageProvider::getStorageNumber(std::string actualDevId)
     }
     else
     {
-        mainId = actualDevId;
+        mainId = std::move(actualDevId);
     }
     std::map<std::string, std::shared_ptr<USBDeviceInfo>>::iterator it;
     for (it = deviceInfo->usbStorages.begin(); it != deviceInfo->usbStorages.end(); ++it)
@@ -995,7 +995,7 @@ int USBStorageProvider::getStorageNumber(std::string actualDevId)
     }
     else
     {
-        mainId = actualDevId;
+        mainId = std::move(actualDevId);
     }
     std::map<std::string, std::shared_ptr<USBDeviceInfo>>::iterator it;
     for (it = deviceInfo->usbStorages.begin(); it != deviceInfo->usbStorages.end(); ++it)

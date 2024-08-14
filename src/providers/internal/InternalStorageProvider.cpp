@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021-2023 LG Electronics, Inc.
+ * Copyright (c) 2021-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -62,7 +62,7 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
     int totalCount = 0;
     std::string fullPath;
     pbnjson::JValue contenResArr = pbnjson::Array();
-    std::unique_ptr<FolderContents> contsPtr = SAFUtilityOperation::getInstance().getListFolderContents(path);
+    std::unique_ptr<FolderContents> contsPtr = SAFUtilityOperation::getInstance().getListFolderContents(std::move(path));
     fullPath = contsPtr->getPath();
     totalCount = contsPtr->getTotalCount();
     if (contsPtr->getStatus() >= 0)
@@ -99,7 +99,7 @@ void InternalStorageProvider::listFolderContents(std::shared_ptr<RequestData> re
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData)
@@ -156,7 +156,7 @@ void InternalStorageProvider::getProperties(std::shared_ptr<RequestData> reqData
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
@@ -182,7 +182,7 @@ void InternalStorageProvider::copy(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalCopy> copyPtr = SAFUtilityOperation::getInstance().copy(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalCopy> copyPtr = SAFUtilityOperation::getInstance().copy(std::move(srcPath), std::move(destPath), overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -236,7 +236,7 @@ void InternalStorageProvider::move(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(std::move(srcPath), std::move(destPath), overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -291,7 +291,7 @@ void InternalStorageProvider::remove(std::shared_ptr<RequestData> reqData)
         return;
     }
 
-    std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(path);
+    std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(std::move(path));
     bool status = (remPtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
     if (!status)
@@ -301,7 +301,7 @@ void InternalStorageProvider::remove(std::shared_ptr<RequestData> reqData)
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void InternalStorageProvider::rename(std::shared_ptr<RequestData> reqData)
@@ -329,7 +329,7 @@ void InternalStorageProvider::rename(std::shared_ptr<RequestData> reqData)
     }
 
     std::string destPath = reqData->params["newName"].asString();
-    std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(srcPath, destPath);
+    std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(std::move(srcPath), std::move(destPath));
     bool status = (renamePtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
     if (!status)
@@ -339,7 +339,7 @@ void InternalStorageProvider::rename(std::shared_ptr<RequestData> reqData)
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void InternalStorageProvider::eject(std::shared_ptr<RequestData> reqData)
@@ -501,7 +501,7 @@ void InternalStorageProvider::dispatchHandler()
             auto request = mQueue.front();
             mQueue.erase(mQueue.begin());
             lock.unlock();
-            handleRequests(request);
+            handleRequests(std::move(request));
             lock.lock();
         }
     } while (!mQuit);

@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021 LG Electronics, Inc.
+ * Copyright (c) 2021-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -105,7 +105,7 @@ void UpnpDiscover::on_resource_unavailable(GSSDPResourceBrowser*,
     if (usnStr.find(UPNP_CONTENT_DIR) != std::string::npos)
     {
         LOG_DEBUG_SAF("%s resource unavailable %s", __FUNCTION__, usnStr.c_str());
-        UpnpDiscover::getInstance().updateDeviceInfo (usnStr, false);
+        UpnpDiscover::getInstance().updateDeviceInfo (std::move(usnStr), false);
     }
 }
 
@@ -123,7 +123,7 @@ void UpnpDiscover::on_resource_available(GSSDPResourceBrowser* browser,
             if (location.find("description.xml") != std::string::npos)
             {
                 LOG_DEBUG_SAF("%s:Location: %s", __FUNCTION__, location.c_str());
-                UpnpDiscover::getInstance().updateDeviceInfo (location);
+                UpnpDiscover::getInstance().updateDeviceInfo (std::move(location));
             }
         }
     }

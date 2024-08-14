@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021-2022 LG Electronics, Inc.
+ * Copyright (c) 2021-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -26,14 +26,14 @@ XMLHandler::XMLHandler()
 }
 
 XMLHandler::XMLHandler(std::string xmlContents)
-    : mDoc(NULL), mRoot(NULL), mContents(xmlContents), mOptions(0)
+    : mDoc(NULL), mRoot(NULL), mContents(std::move(xmlContents)), mOptions(0)
 {
     init();
 }
 
 XMLHandler::XMLHandler(std::string fileName, int options)
     : mDoc(NULL), mRoot(NULL)
-    , mFileName(fileName), mOptions(options)
+    , mFileName(std::move(fileName)), mOptions(options)
 {
     init();
 }
@@ -91,7 +91,7 @@ void XMLHandler::setXmlContent(std::string xml)
 {
     deinit();
     mContents.clear();
-    mContents = xml;
+    mContents = std::move(xml);
     mDoc = xmlReadDoc((xmlChar *)(mContents.c_str()), NULL, NULL, XML_PARSE_RECOVER | XML_PARSE_NOBLANKS | XML_PARSE_OLD10);
     if (mDoc != NULL)
     {
@@ -235,7 +235,7 @@ void XMLHandler::getMatchingElementDetails(xmlNode* a_node, std::string nodeName
      }
      if (!matchData.empty() && !nodeData.empty() && (matchData.find(matchVal) != std::string::npos))
      {
-         mRes = nodeData;
+         mRes = std::move(nodeData);
          break;
      }
       }
@@ -246,7 +246,7 @@ void XMLHandler::getMatchingElementDetails(xmlNode* a_node, std::string nodeName
 std::string XMLHandler::getValueUnderSameParent(std::string nodeName, std::string matchNode, std::string matchVal)
 {
     mRes.clear();
-    getMatchingElementDetails(mRoot, nodeName, matchNode, matchVal);
+    getMatchingElementDetails(mRoot, nodeName, std::move(matchNode), std::move(matchVal));
     std::cout << __func__ << " : " << nodeName << " val : [" << mRes << "]" << std::endl;
     return mRes;
 }

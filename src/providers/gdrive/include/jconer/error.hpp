@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2014 Justin (Jianfeng) Lin
+// Copyright (c) 2014-2024 Justin (Jianfeng) Lin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -52,7 +52,7 @@ struct PError {
     PError(int lineno_, int col_, std::string text_, ErrorType type_)
         :lineno(lineno_),
          col(col_),
-         text(text_),
+         text(std::move(text_)),
          type(type_)
     {}
     PError(const PError& other)

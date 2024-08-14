@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021 LG Electronics, Inc.
+ * Copyright (c) 2021-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -18,7 +18,7 @@ pbnjson::JValue USBPbnJsonParser::ParseListOfStorages(pbnjson::JValue rootObj)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
     int numUSBDevices = 0;
-    pbnjson::JValue replyObj = rootObj;
+    pbnjson::JValue replyObj = std::move(rootObj);
     pbnjson::JValue usbArray = pbnjson::Array();
     pbnjson::JValue responseArray = pbnjson::Array();
     pbnjson::JValue responseObj = pbnjson::Object();

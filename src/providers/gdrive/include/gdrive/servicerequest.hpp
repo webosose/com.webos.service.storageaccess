@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2014 Justin (Jianfeng) Lin
+// Copyright (c) 2014-2024 Justin (Jianfeng) Lin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -75,7 +75,7 @@ class ResourceRequest : public CredentialHttpRequest {
     CLASS_MAKE_LOGGER
     public:
         ResourceRequest(Credential* cred, std::string uri)
-            :CredentialHttpRequest(cred, uri, method) {}
+            :CredentialHttpRequest(cred, std::move(uri), method) {}
 
         ResType execute() {
             ResType _1;
@@ -92,7 +92,7 @@ class ResourceRequest : public CredentialHttpRequest {
 
         inline void add_field(std::string field) {
             if (_query.find("fields") == _query.end()) {
-                _query["fields"] = field;
+                _query["fields"] = std::move(field);
             } else {
                 _query["fields"] += "," + field;
             }
@@ -119,7 +119,7 @@ class DeleteRequest : public CredentialHttpRequest {
     CLASS_MAKE_LOGGER
     public:
         DeleteRequest(Credential* cred, std::string uri)
-            :CredentialHttpRequest(cred, uri, RM_DELETE) {}
+            :CredentialHttpRequest(cred, std::move(uri), RM_DELETE) {}
         void execute();
 };
 
@@ -128,7 +128,7 @@ class ResourceAttachedRequest : public ResourceRequest<ResType, method> {
     CLASS_MAKE_LOGGER
     public:
         ResourceAttachedRequest(ResType* resource, Credential* cred, std::string uri)
-            :ResourceRequest<ResType, method>(cred, uri), _resource(resource) {}
+            :ResourceRequest<ResType, method>(cred, std::move(uri)), _resource(resource) {}
 
         ResType execute() {
             _json_encode_body();
@@ -150,7 +150,7 @@ class ResourceAttachedRequest : public ResourceRequest<ResType, method> {
                 std::string field = *iter;
                 if (tmp->contain(field)) {
                     JValue* v = tmp->pop(field);
-                    rst_obj->put(field, v);
+                    rst_obj->put(std::move(field), v);
                 }
             }
             char* buf;
@@ -171,7 +171,7 @@ class FileListRequest: public ResourceRequest<GFileList, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         FileListRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GFileList, RM_GET>(cred, uri) {}
+            :ResourceRequest<GFileList, RM_GET>(cred, std::move(uri)) {}
         STRING_SET_ATTR(pageToken)
         STRING_SET_ATTR(q)
         void set_corpus(std::string corpus);
@@ -182,7 +182,7 @@ class FileGetRequest: public ResourceRequest<GFile, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         FileGetRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GFile, RM_GET>(cred, uri) {}
+            :ResourceRequest<GFile, RM_GET>(cred, std::move(uri)) {}
         BOOL_SET_ATTR(updateViewedDate)
 };
 
@@ -196,7 +196,7 @@ class FilePatchRequest : public ResourceAttachedRequest<GFile, RM_PATCH> {
     CLASS_MAKE_LOGGER
     public:
         FilePatchRequest(GFile* file, Credential* cred, std::string uri)
-            :ResourceAttachedRequest<GFile, RM_PATCH>(file, cred, uri) {}
+            :ResourceAttachedRequest<GFile, RM_PATCH>(file, cred, std::move(uri)) {}
 
 
         BOOL_SET_ATTR(convert)
@@ -217,7 +217,7 @@ class FileCopyRequest : public ResourceAttachedRequest<GFile, RM_POST> {
     CLASS_MAKE_LOGGER
     public:
         FileCopyRequest(GFile* file, Credential* cred, std::string uri)
-            :ResourceAttachedRequest<GFile, RM_POST>(file, cred, uri) {}
+            :ResourceAttachedRequest<GFile, RM_POST>(file, cred, std::move(uri)) {}
 
         BOOL_SET_ATTR(convert)
         BOOL_SET_ATTR(ocr)
@@ -227,7 +227,7 @@ class FileCopyRequest : public ResourceAttachedRequest<GFile, RM_POST> {
         STRING_SET_ATTR(timedTextTrackName)
         void set_visibilty(std::string v) {
             if (v == "DEFAULT" || v == "PRIVATE")
-                _query["visibility"] = v;
+                _query["visibility"] = std::move(v);
         }
 };
 
@@ -241,7 +241,7 @@ class FileUploadRequest: public ResourceAttachedRequest<GFile, RM_POST> {
     CLASS_MAKE_LOGGER
     public:
         FileUploadRequest(FileContent* content, GFile* file, Credential* cred, std::string uri, bool resumable = false)
-            :ResourceAttachedRequest<GFile, RM_POST>(file, cred, uri), _content(content), _resumable(resumable), _type(UT_CREATE) {}
+            :ResourceAttachedRequest<GFile, RM_POST>(file, cred, std::move(uri)), _content(content), _resumable(resumable), _type(UT_CREATE) {}
 
         GFile execute();
         BOOL_SET_ATTR(convert)
@@ -253,7 +253,7 @@ class FileUploadRequest: public ResourceAttachedRequest<GFile, RM_POST> {
         BOOL_SET_ATTR(useContentAsIndexableText)
         void set_visibilty(std::string v) {
             if (v == "DEFAULT" || v == "PRIVATE")
-                _query["visibility"] = v;
+                _query["visibility"] = std::move(v);
         }
 
     protected:
@@ -270,7 +270,7 @@ class FileUpdateRequest: public FileUploadRequest {
     CLASS_MAKE_LOGGER
     public:
         FileUpdateRequest(FileContent* content, GFile* file, Credential* cred, std::string uri, bool resumable = false)
-            :FileUploadRequest(content, file, cred, uri, resumable)
+            :FileUploadRequest(content, file, cred, std::move(uri), resumable)
         { 
             _type = UT_UPDATE;
             _method = RM_PUT;
@@ -283,7 +283,7 @@ class AboutGetRequest: public ResourceRequest<GAbout, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         AboutGetRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GAbout, RM_GET>(cred, uri) {}
+            :ResourceRequest<GAbout, RM_GET>(cred, std::move(uri)) {}
         
         BOOL_SET_ATTR(includeSubscribed)
         LONG_SET_ATTR(maxChangeIdCount)
@@ -296,7 +296,7 @@ class ChangeListRequest: public ResourceRequest<GChangeList, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         ChangeListRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GChangeList, RM_GET>(cred, uri) {}
+            :ResourceRequest<GChangeList, RM_GET>(cred, std::move(uri)) {}
 
         BOOL_SET_ATTR(includeDeleted)
         BOOL_SET_ATTR(includeSubscribed)
@@ -310,7 +310,7 @@ class ChildrenListRequest: public ResourceRequest<GChildrenList, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         ChildrenListRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GChildrenList, RM_GET>(cred, uri) {}
+            :ResourceRequest<GChildrenList, RM_GET>(cred, std::move(uri)) {}
 
         LONG_SET_ATTR(maxResults)
         STRING_SET_ATTR(pageToken)
@@ -333,7 +333,7 @@ class PermissionInsertRequest: public ResourceAttachedRequest<GPermission, RM_PO
     CLASS_MAKE_LOGGER
     public:
         PermissionInsertRequest(GPermission* permission, Credential* cred, std::string uri)
-            :ResourceAttachedRequest<GPermission, RM_POST>(permission, cred, uri) {}
+            :ResourceAttachedRequest<GPermission, RM_POST>(permission, cred, std::move(uri)) {}
         STRING_SET_ATTR(emailMessage)
         BOOL_SET_ATTR(sendNotificationEmails)
 };
@@ -344,7 +344,7 @@ class PermissionPatchRequest : public ResourceAttachedRequest<GPermission, RM_PA
     CLASS_MAKE_LOGGER
     public:
         PermissionPatchRequest(GPermission* permission, Credential* cred, std::string uri)
-            :ResourceAttachedRequest<GPermission, RM_PATCH>(permission, cred, uri) {}
+            :ResourceAttachedRequest<GPermission, RM_PATCH>(permission, cred, std::move(uri)) {}
 
         BOOL_SET_ATTR(transferOwnership)
 };
@@ -353,7 +353,7 @@ class PermissionUpdateRequest : public ResourceAttachedRequest<GPermission, RM_P
     CLASS_MAKE_LOGGER
     public:
         PermissionUpdateRequest(GPermission* permission, Credential* cred, std::string uri)
-            :ResourceAttachedRequest<GPermission, RM_PUT>(permission, cred, uri) {}
+            :ResourceAttachedRequest<GPermission, RM_PUT>(permission, cred, std::move(uri)) {}
 
         BOOL_SET_ATTR(transferOwnership)
 };
@@ -369,7 +369,7 @@ class RevisionUpdateRequest : public ResourceAttachedRequest<GRevision, RM_PUT> 
     CLASS_MAKE_LOGGER
     public:
         RevisionUpdateRequest(GRevision* revision, Credential* cred, std::string uri)
-            :ResourceAttachedRequest<GRevision, RM_PUT>(revision, cred, uri) {}
+            :ResourceAttachedRequest<GRevision, RM_PUT>(revision, cred, std::move(uri)) {}
 
         BOOL_SET_ATTR(pinned)
         BOOL_SET_ATTR(publishedAuto)
@@ -381,7 +381,7 @@ class AppListRequest: public ResourceRequest<GAppList, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         AppListRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GAppList, RM_GET>(cred, uri) {}
+            :ResourceRequest<GAppList, RM_GET>(cred, std::move(uri)) {}
         STRING_SET_ATTR(appFilterExtensions)
         STRING_SET_ATTR(appFilterMimeTypes)
         STRING_SET_ATTR(languageCode)
@@ -393,7 +393,7 @@ class ReplyListRequest: public ResourceRequest<GReplyList, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         ReplyListRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GReplyList, RM_GET>(cred, uri) {}
+            :ResourceRequest<GReplyList, RM_GET>(cred, std::move(uri)) {}
         BOOL_SET_ATTR(includedDeleted)
         LONG_SET_ATTR(maxResults)
         STRING_SET_ATTR(pageToken)
@@ -403,7 +403,7 @@ class ReplyGetRequest: public ResourceRequest<GReply, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         ReplyGetRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GReply, RM_GET>(cred, uri) {}
+            :ResourceRequest<GReply, RM_GET>(cred, std::move(uri)) {}
         BOOL_SET_ATTR(includedDeleted)
 };
 
@@ -416,7 +416,7 @@ class CommentListRequest: public ResourceRequest<GCommentList, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         CommentListRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GCommentList, RM_GET>(cred, uri) {}
+            :ResourceRequest<GCommentList, RM_GET>(cred, std::move(uri)) {}
         BOOL_SET_ATTR(includedDeleted)
         LONG_SET_ATTR(maxResults)
         STRING_SET_ATTR(pageToken)
@@ -427,7 +427,7 @@ class CommentGetRequest: public ResourceRequest<GComment, RM_GET> {
     CLASS_MAKE_LOGGER
     public:
         CommentGetRequest(Credential* cred, std::string uri)
-            :ResourceRequest<GComment, RM_GET>(cred, uri) {}
+            :ResourceRequest<GComment, RM_GET>(cred, std::move(uri)) {}
         BOOL_SET_ATTR(includedDeleted)
 };
 

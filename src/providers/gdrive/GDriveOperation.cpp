@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020-2021 LG Electronics, Inc.
+ * Copyright (c) 2020-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -28,7 +28,7 @@ void GDriveOperation::loadFileIds(std::shared_ptr<GDRIVE::Credential> cred)
 void GDriveOperation::getChildren (std::string fileId, std::shared_ptr<GDRIVE::Drive> service, std::string parentPath)
 {
     LOG_DEBUG_SAF("%s", __FUNCTION__);
-    std::vector<GDRIVE::GChildren>childs = service->children().Listall(fileId);
+    std::vector<GDRIVE::GChildren>childs = service->children().Listall(std::move(fileId));
     for (int j = 0; j < childs.size(); j++)
     {
        GDRIVE::FileGetRequest get = service->files().Get(childs[j].get_id());
@@ -37,7 +37,10 @@ void GDriveOperation::getChildren (std::string fileId, std::shared_ptr<GDRIVE::D
        std::string path = parentPath + file.get_title();
        mFileIds[path] = file.get_id();
        LOG_DEBUG_SAF("getChildren  %s =>>>>:: %s", path.c_str(), file.get_title().c_str());
-       getChildren(file.get_id(), service, (parentPath + file.get_title() + "/"));
+       getChildren(file.get_id(), service, (parentPath + file.get_title() + 
+
+
+"/"));
     }
     return;
 }
@@ -58,7 +61,7 @@ std::map<std::string, std::string> GDriveOperation::getFileMap(std::string path)
     else
     {
         std::map<std::string, std::string>temp;
-        for(auto entry : mFileIds)
+        for(auto & entry : mFileIds)
         {
             if(entry.first == path)
                 continue;

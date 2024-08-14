@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2014 Justin (Jianfeng) Lin
+// Copyright (c) 2014-2024 Justin (Jianfeng) Lin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -155,7 +155,7 @@ class InSerializer {
 
         InSerializer(std::string jsonText) {
           PError err;
-          JValue * array = loads(jsonText, err);
+          JValue * array = loads(std::move(jsonText), err);
           assert(array != NULL && array->isArray());
 
           _array = (JArray*)array;

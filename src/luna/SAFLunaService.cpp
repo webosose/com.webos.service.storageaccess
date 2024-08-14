@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022 LG Electronics, Inc.
+// Copyright (c) 2020-2024 LG Electronics, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ bool SAFLunaService::handleExtraCommand(LSMessage &message)
     }
 
     std::string storageType = requestObj["storageType"].asString();
-    if(getStorageDeviceType(storageType) == StorageType::INVALID)
+    if(getStorageDeviceType(std::move(storageType)) == StorageType::INVALID)
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
@@ -149,7 +149,7 @@ bool SAFLunaService::list(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
-    else if(getStorageDeviceType(storageType) == StorageType::INVALID)
+    else if(getStorageDeviceType(std::move(storageType)) == StorageType::INVALID)
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
@@ -170,10 +170,10 @@ void SAFLunaService::onListReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtil
     pbnjson::JValue respObj;
     if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
     {
-        StorageType type = getStorageDeviceType(reqObj);
+        StorageType type = getStorageDeviceType(std::move(reqObj));
         if (type == StorageType::INTERNAL || type == StorageType::USB || type == StorageType::GDRIVE || type == StorageType::NETWORK)
         {
-            respObj = rootObj;
+            respObj = std::move(rootObj);
         }
         else
         {
@@ -206,7 +206,7 @@ bool SAFLunaService::getProperties(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
-    else if(getStorageDeviceType(storageType) == StorageType::INVALID)
+    else if(getStorageDeviceType(std::move(storageType)) == StorageType::INVALID)
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
@@ -230,18 +230,18 @@ void SAFLunaService::onGetPropertiesReply(pbnjson::JValue rootObj, std::shared_p
         StorageType type = getStorageDeviceType(reqObj);
         if ((type == StorageType::INTERNAL) || (type == StorageType::GDRIVE) || type == StorageType::NETWORK)
         {
-            respObj = rootObj;
+            respObj = std::move(rootObj);
         }
         else if(type == StorageType::USB)
         {
             if(reqObj.hasKey("path"))
             {
-                respObj = rootObj;
+                respObj = std::move(rootObj);
             }
             else
             {
                 USBPbnJsonParser parser;
-                respObj = parser.ParseGetProperties(rootObj, reqObj["driveId"].asString());
+                respObj = parser.ParseGetProperties(std::move(rootObj), reqObj["driveId"].asString());
             }
         }
         else
@@ -376,7 +376,7 @@ bool SAFLunaService::copy(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
-    else if(getStorageDeviceType(srcType) == StorageType::INVALID || getStorageDeviceType(desType) == StorageType::INVALID)
+    else if(getStorageDeviceType(srcType) == StorageType::INVALID || getStorageDeviceType(std::move(desType)) == StorageType::INVALID)
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
@@ -398,10 +398,10 @@ void SAFLunaService::onCopyReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtil
     pbnjson::JValue respObj;
     if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
     {
-        StorageType type = getStorageDeviceType(reqObj);
+        StorageType type = getStorageDeviceType(std::move(reqObj));
         if (type == StorageType::INTERNAL || type == StorageType::USB || type == StorageType::GDRIVE || type == StorageType::NETWORK)
         {
-            respObj = rootObj;
+            respObj = std::move(rootObj);
         }
         else
         {
@@ -442,7 +442,7 @@ bool SAFLunaService::move(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
-    else if(getStorageDeviceType(srcType) == StorageType::INVALID || getStorageDeviceType(desType) == StorageType::INVALID)
+    else if(getStorageDeviceType(srcType) == StorageType::INVALID || getStorageDeviceType(std::move(desType)) == StorageType::INVALID)
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
@@ -464,10 +464,10 @@ void SAFLunaService::onMoveReply(pbnjson::JValue rootObj, std::shared_ptr<LSUtil
     pbnjson::JValue respObj;
     if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
     {
-        StorageType type = getStorageDeviceType(reqObj);
+        StorageType type = getStorageDeviceType(std::move(reqObj));
         if (type == StorageType::INTERNAL || type == StorageType::USB || type == StorageType::GDRIVE || type == StorageType::NETWORK)
         {
-            respObj = rootObj;
+            respObj = std::move(rootObj);
         }
         else
         {
@@ -501,7 +501,7 @@ bool SAFLunaService::remove(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
-    else if(getStorageDeviceType(storageTypeString) == StorageType::INVALID)
+    else if(getStorageDeviceType(std::move(storageTypeString)) == StorageType::INVALID)
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
@@ -522,10 +522,10 @@ void SAFLunaService::onRemoveReply(pbnjson::JValue rootObj, std::shared_ptr<LSUt
     pbnjson::JValue respObj;
     if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
     {
-        StorageType type = getStorageDeviceType(reqObj);
+        StorageType type = getStorageDeviceType(std::move(reqObj));
         if (type == StorageType::INTERNAL || type == StorageType::USB || type == StorageType::GDRIVE || type == StorageType::NETWORK)
         {
-            respObj = rootObj;
+            respObj = std::move(rootObj);
         }
         else
         {
@@ -556,7 +556,7 @@ bool SAFLunaService::eject(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
-    else if(getStorageDeviceType(storageType) == StorageType::INVALID)
+    else if(getStorageDeviceType(std::move(storageType)) == StorageType::INVALID)
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
@@ -577,11 +577,11 @@ void SAFLunaService::onEjectReply(pbnjson::JValue rootObj, std::shared_ptr<LSUti
     pbnjson::JValue respObj = pbnjson::Object();
     if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
     {
-        StorageType type = getStorageDeviceType(reqObj);
+        StorageType type = getStorageDeviceType(std::move(reqObj));
         if (type == StorageType::USB)
         {
             USBPbnJsonParser parser;
-            respObj = parser.ParseEject(rootObj);
+            respObj = parser.ParseEject(std::move(rootObj));
         }
         else if (type == StorageType::GDRIVE || type == StorageType::NETWORK || type == StorageType::INTERNAL)
         {
@@ -620,7 +620,7 @@ bool SAFLunaService::rename(LSMessage &message)
         LSUtils::respondWithError(request, errorStr, SAFErrors::INVALID_PARAM);
         return true;
     }
-    else if(getStorageDeviceType(storageType) == StorageType::INVALID)
+    else if(getStorageDeviceType(std::move(storageType)) == StorageType::INVALID)
     {
         const std::string errorStr = SAFErrors::getSAFErrorString(SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
         LSUtils::respondWithError(request, errorStr, SAFErrors::STORAGE_TYPE_NOT_SUPPORTED);
@@ -641,10 +641,10 @@ void SAFLunaService::onRenameReply(pbnjson::JValue rootObj, std::shared_ptr<LSUt
     pbnjson::JValue respObj;
     if (LSUtils::parsePayload(request.getPayload(), reqObj, std::string(SCHEMA_ANY), NULL))
     {
-        StorageType type = getStorageDeviceType(reqObj);
+        StorageType type = getStorageDeviceType(std::move(reqObj));
         if (type == StorageType::INTERNAL || type == StorageType::USB || type == StorageType::GDRIVE || type == StorageType::NETWORK)
         {
-            respObj = rootObj;
+            respObj = std::move(rootObj);
         }
         else
         {

@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020-2023 LG Electronics, Inc.
+ * Copyright (c) 2020-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -46,7 +46,7 @@ void NetworkProvider::setErrorMessage(shared_ptr<ValuePairMap> valueMap, string 
 bool NetworkProvider::validateExtraCommand(std::vector<std::string> extraParams, std::shared_ptr<RequestData> reqData)
 {
     pbnjson::JValue payload = reqData->params["operation"]["payload"];
-    for (auto paramName : extraParams)
+    for (auto & paramName : extraParams)
     {
         if (!payload.hasKey(paramName) || payload[paramName].asString().empty())
             return false;
@@ -72,18 +72,18 @@ void NetworkProvider::extraMethod(std::shared_ptr<RequestData> reqData)
     pbnjson::JValue respObj = pbnjson::Object();
     if ((type == "mountSambaServer") && validateExtraCommand({"ip","sharePath",}, reqData))
     {
-        mountSambaServer(reqData);
+        mountSambaServer(std::move(reqData));
     }
     else if ((type == "discoverUPnPMediaServer"))
     {
-        discoverUPnPMediaServer(reqData);
+        discoverUPnPMediaServer(std::move(reqData));
     }
     else
     {
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", SAFErrors::CloudErrors::getCloudErrorString(SAFErrors::INVALID_PARAM));
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
     }
 }
 
@@ -231,7 +231,7 @@ void NetworkProvider::mountSambaServer(std::shared_ptr<RequestData> reqData)
           reqData->cb(respObj, reqData->subs);
           return;
    }
-   reqData->cb(respObj, reqData->subs);
+   reqData->cb(std::move(respObj), reqData->subs);
 }
 
 pbnjson::JValue NetworkProvider::parseMediaServer(std::string url)
@@ -287,7 +287,7 @@ void NetworkProvider::discoverUPnPMediaServer(std::shared_ptr<RequestData> reqDa
     responsePayObjArr.append(responsePayObj);
     respObj.put("returnValue", true);
     respObj.put("responsePayload", responsePayObjArr);
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void NetworkProvider::list(std::shared_ptr<RequestData> reqData)
@@ -328,7 +328,7 @@ void NetworkProvider::list(std::shared_ptr<RequestData> reqData)
         int totalCount = 0;
         std::string fullPath;
         pbnjson::JValue contenResArr = pbnjson::Array();
-        std::unique_ptr<FolderContents> contsPtr = SAFUtilityOperation::getInstance().getListFolderContents(path);
+        std::unique_ptr<FolderContents> contsPtr = SAFUtilityOperation::getInstance().getListFolderContents(std::move(path));
         fullPath = contsPtr->getPath();
         totalCount = contsPtr->getTotalCount();
         if (contsPtr->getStatus() >= 0)
@@ -364,7 +364,7 @@ void NetworkProvider::list(std::shared_ptr<RequestData> reqData)
             respObj.put("errorCode", errorCode);
             respObj.put("errorText", errorStr);
         }
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
 
     }
 
@@ -382,7 +382,7 @@ void NetworkProvider::list(std::shared_ptr<RequestData> reqData)
         {
             respObj.put("errorCode", SAFErrors::INVALID_PATH);
             respObj.put("errorText", "Invalid Path");
-            reqData->cb(respObj, reqData->subs);
+            reqData->cb(std::move(respObj), reqData->subs);
             return;
         }
         pbnjson::JValue contenResArr = pbnjson::Array();
@@ -419,7 +419,7 @@ void NetworkProvider::list(std::shared_ptr<RequestData> reqData)
             respObj.put("errorCode", 101);
             respObj.put("errorText", "UPNP List Faild ");
         }
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
     }
 }
 
@@ -472,13 +472,13 @@ void NetworkProvider::getProperties(std::shared_ptr<RequestData> reqData)
     pbnjson::JValue attributesArr = pbnjson::Array();
     if (type == UPNP_NAME)
     {
-        auto containerId = UpnpOperation::getInstance().getContainerId(mUpnpPathMap[driveId], path);
+        auto containerId = UpnpOperation::getInstance().getContainerId(mUpnpPathMap[driveId], std::move(path));
         LOG_DEBUG_SAF("UPnP container Id : %d", containerId);
         auto devs = UpnpOperation::getInstance().listDirContents(containerId);
         LOG_DEBUG_SAF("UPnP devs size : %d", devs.size());
         if(!devs.empty())
         {
-            auto dev = devs[0];
+            auto & dev = devs[0];
             pbnjson::JValue contentObj = pbnjson::Object();
             contentObj.put("id", dev.id);
             contentObj.put("restricted", dev.restricted);
@@ -529,7 +529,7 @@ void NetworkProvider::getProperties(std::shared_ptr<RequestData> reqData)
         }
     }
     respObj.put("attributes", attributesArr);
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 }
 
 void NetworkProvider::copy(std::shared_ptr<RequestData> reqData)
@@ -542,7 +542,7 @@ void NetworkProvider::copy(std::shared_ptr<RequestData> reqData)
     std::string srcdriveId = reqData->params["srcDriveId"].asString();
     std::string destDriveId = reqData->params["destDriveId"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
-    if((!validateSambaOperation(srcdriveId,reqData->sessionId)))
+    if((!validateSambaOperation(std::move(srcdriveId),reqData->sessionId)))
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
@@ -555,7 +555,7 @@ void NetworkProvider::copy(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalCopy> copyPtr = SAFUtilityOperation::getInstance().copy(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalCopy> copyPtr = SAFUtilityOperation::getInstance().copy(std::move(srcPath), std::move(destPath), overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -597,7 +597,7 @@ void NetworkProvider::move(std::shared_ptr<RequestData> reqData)
     std::string srcdriveId = reqData->params["srcDriveId"].asString();
     std::string destDriveId = reqData->params["destDriveID"].asString();
     pbnjson::JValue respObj = pbnjson::Object();
-    if((!validateSambaOperation(srcdriveId,reqData->sessionId)))
+    if((!validateSambaOperation(std::move(srcdriveId),reqData->sessionId)))
     {
         respObj.put("errorCode", SAFErrors::INVALID_PARAM);
         respObj.put("errorText", "Invalid DriveID");
@@ -611,7 +611,7 @@ void NetworkProvider::move(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(srcPath, destPath, overwrite);
+    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(destPath, std::move(destPath), overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
@@ -662,7 +662,7 @@ void NetworkProvider::remove(std::shared_ptr<RequestData> reqData)
         reqData->cb(respObj, reqData->subs);
         return;
     }
-    std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(path);
+    std::unique_ptr<InternalRemove> remPtr = SAFUtilityOperation::getInstance().remove(std::move(path));
     bool status = (remPtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
     if (!status)
@@ -672,7 +672,7 @@ void NetworkProvider::remove(std::shared_ptr<RequestData> reqData)
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 
 }
 
@@ -697,7 +697,7 @@ void NetworkProvider::rename(std::shared_ptr<RequestData> reqData)
         return;
     }
     std::string destPath = reqData->params["newName"].asString();
-    std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(srcPath, destPath);
+    std::unique_ptr<InternalRename> renamePtr = SAFUtilityOperation::getInstance().rename(std::move(srcPath), std::move(destPath));
     bool status = (renamePtr->getStatus() < 0)?(false):(true);
     respObj.put("returnValue", status);
     if (!status)
@@ -707,7 +707,7 @@ void NetworkProvider::rename(std::shared_ptr<RequestData> reqData)
         respObj.put("errorCode", errorCode);
         respObj.put("errorText", errorStr);
     }
-    reqData->cb(respObj, reqData->subs);
+    reqData->cb(std::move(respObj), reqData->subs);
 
 }
 
@@ -716,7 +716,7 @@ void NetworkProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
     LOG_DEBUG_SAF("Entering function %s", __FUNCTION__);
     pbnjson::JValue respObj = pbnjson::Object();
     pbnjson::JValue networkResArr = pbnjson::Array();
-    for (auto data : mSambaSessionData)
+    for (auto & data : mSambaSessionData)
     {
         if (data.second != reqData->sessionId)  continue;
         pbnjson::JValue networkRes = pbnjson::Object();
@@ -725,7 +725,7 @@ void NetworkProvider::listStoragesMethod(std::shared_ptr<RequestData> reqData)
         networkRes.put("path", mSambaPathMap[data.first]);
         networkResArr.append(networkRes);
     }
-    for (auto data : mUpnpSessionData)
+    for (auto & data : mUpnpSessionData)
     {
         if (data.second != reqData->sessionId)  continue;
         pbnjson::JValue networkRes = pbnjson::Object();
@@ -752,7 +752,7 @@ void NetworkProvider::eject(std::shared_ptr<RequestData> reqData)
         reqData->cb(reqData->params, std::move(reqData->subs));
         return;
     }
-    for(auto entry : mSambaDriveMap)
+    for(auto & entry : mSambaDriveMap)
     {
         if(entry.second == driveId)
         {
@@ -884,7 +884,7 @@ void NetworkProvider::dispatchHandler()
             auto request = mQueue.front();
             mQueue.erase(mQueue.begin());
             lock.unlock();
-            handleRequests(request);
+            handleRequests(std::move(request));
             lock.lock();
         }
     } while (!mQuit);
