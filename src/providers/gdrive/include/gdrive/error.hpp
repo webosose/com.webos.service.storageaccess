@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2014 Justin (Jianfeng) Lin
+// Copyright (c) 2014-2024 Justin (Jianfeng) Lin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ namespace GDRIVE {
 class GoogleJsonResponseException : public std::exception {
     public:
         GoogleJsonResponseException(GError error)
-            :_details(error)
+            :_details(std::move(error))
         {
         }
 
@@ -52,7 +52,7 @@ class GoogleJsonResponseException : public std::exception {
 class CurlException : public std::exception {
     public:
         CurlException(int code, std::string error)
-            :_code(code), _error(error) {}
+            :_code(code), _error(std::move(error)) {}
         std::string error() { return _error; }
         int code() { return _code;}
         virtual ~CurlException() throw() {}

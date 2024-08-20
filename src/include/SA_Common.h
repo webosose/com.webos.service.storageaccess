@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2020 LG Electronics, Inc.
+ * Copyright (c) 2020-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -38,7 +38,7 @@ public:
 
 class Storage : public Content  {
 public:
-    Storage(StorageType _type, string _id, string _name) : type(_type), id(_id), name(_name) {}
+    Storage(StorageType _type, string _id, string _name) : type(_type), id(std::move(_id)), name(std::move(_name)) {}
     StorageType type;
     string id;
     string name;

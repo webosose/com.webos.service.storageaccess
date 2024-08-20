@@ -37,7 +37,7 @@ class Property {
         }
 
         int get_int(std::string key, int d = 0) {
-            std::string value = get(key);
+            std::string value = get(std::move(key));
             if (value == "") {
                 return d;
             } else {
@@ -46,7 +46,7 @@ class Property {
         }
 
         double get_real(std::string key, double d = 0.0) {
-            std::string value = get(key);
+            std::string value = get(std::move(key));
             if (value == "") {
                 return d;
             } else {
@@ -55,11 +55,11 @@ class Property {
         }
 
         bool get_bool(std::string key, bool d = false) {
-            std::string value = get(key);
+            std::string value = get(std::move(key));
             if (value == "") {
                 return d;
             } else {
-                std::string lower = VarString::tolower(value);
+                std::string lower = VarString::tolower(std::move(value));
                 if (lower == "false" || lower == "0") return false;
                 if (lower == "true" || lower == "1") return true;
                 return d;
@@ -79,7 +79,7 @@ class Property {
                     if (line == "" || line[0] == '#') {
                         continue;
                     } else {
-                        std::vector<std::string> parts = VarString::split(line, "=");
+                        std::vector<std::string> parts = VarString::split(std::move(line), "=");
                         if (parts.size() == 1) {
                             continue;
                         } else {

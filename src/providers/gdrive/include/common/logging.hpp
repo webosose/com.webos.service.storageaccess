@@ -62,7 +62,7 @@ class Logger {
             : _level(level), _type(LT_FUNCTION) {}
 
         void setLevel(Level level) { _level = level; }
-        void setClassName(std::string cname) { _cname = cname; _type = LT_CLASS;}
+        void setClassName(std::string cname) { _cname = std::move(cname); _type = LT_CLASS;}
 
         void debug(const char* funcname, const char* filename, int lineno, const char* fmt, ...) {
             va_list va;

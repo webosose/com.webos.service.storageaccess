@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2014 Justin (Jianfeng) Lin
+// Copyright (c) 2014-2024 Justin (Jianfeng) Lin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ class FileContent {
     CLASS_MAKE_LOGGER
     public:
         FileContent(std::ifstream& fin, std::string mimetype)
-            :_fin(fin), _mimetype(mimetype)
+            :_fin(fin), _mimetype(std::move(mimetype))
         {
             _length = -1;
             _resumable_cur_pos = _resumable_start_pos = _resumable_length = 0;

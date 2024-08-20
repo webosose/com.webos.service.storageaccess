@@ -1,6 +1,6 @@
 /* @@@LICENSE
  *
- * Copyright (c) 2021-2022 LG Electronics, Inc.
+ * Copyright (c) 2021-2024 LG Electronics, Inc.
  *
  * Confidential computer software. Valid license from LG required for
  * possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -73,7 +73,7 @@ void SAFUtilityOperation::setDriveDetails(const std::string& type, std::map<std:
     if(type == "SAMBA")
     {
         mSambaDrivePathMap.clear();
-        for(auto entry : inputMap)
+        for(auto & entry : inputMap)
             mSambaDrivePathMap[entry.first] = entry.second;
     }
 
@@ -104,7 +104,7 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
         respObj.put("errorText", "No such file or directory at destination");
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         result = false;
     }
     else if((destStorageType == "internal") && (!validateInternalPath(destPath,sessionId)))
@@ -112,7 +112,7 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::PERMISSION_DENIED);
         respObj.put("errorText", "No such file or directory at destination");
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         result = false;
     }
     else if((srcStorageType == "network") && (!validateSambaPath(srcPath, srcDriveId)))
@@ -120,7 +120,7 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
         respObj.put("errorText", "No such file or directory at source");
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         result = false;
     }
     else if((srcStorageType == "internal") && (!validateInternalPath(srcPath,sessionId)))
@@ -128,7 +128,7 @@ bool SAFUtilityOperation::validateInterProviderOperation(std::shared_ptr<Request
         respObj.put("returnValue", false);
         respObj.put("errorCode", SAFErrors::INVALID_SOURCE_PATH);
         respObj.put("errorText", "No such file or directory at source");
-        reqData->cb(respObj, reqData->subs);
+        reqData->cb(std::move(respObj), reqData->subs);
         result = false;
     }
     return result;
@@ -230,7 +230,7 @@ int getInternalErrorCode(int errorCode)
     return retCode;
 }
 
-FolderContent::FolderContent(std::string absPath) : mPath(absPath)
+FolderContent::FolderContent(std::string absPath) : mPath(std::move(absPath))
 {
     init();
 }
@@ -289,7 +289,7 @@ uintmax_t FolderContent::getFileSize(std::string filePath)
             {
                 std::string entryPath = entry.path();
                 if (entryPath.find("/.") == std::string::npos)
-                    size += getFileSize(entryPath);
+                    size += getFileSize(std::move(entryPath));
             }
         }
         else
@@ -326,7 +326,7 @@ std::string FolderContent::getModTime()
     return timeStamp;
 }
 
-FolderContents::FolderContents(std::string fullPath) : mFullPath(fullPath), mStatus(NO_ERROR)
+FolderContents::FolderContents(std::string fullPath) : mFullPath(std::move(fullPath)), mStatus(NO_ERROR)
 {
     init();
 }
@@ -349,7 +349,7 @@ void FolderContents::init()
             std::string entryPath = entry.path();
             if (entryPath.find("/.") == std::string::npos)
             {
-                std::shared_ptr<FolderContent> folderObj = std::shared_ptr<FolderContent>(new FolderContent(entryPath));
+                std::shared_ptr<FolderContent> folderObj = std::shared_ptr<FolderContent>(new FolderContent(std::move(entryPath)));
                 mContents.push_back(folderObj);
                 //LOG_DEBUG_SAF("%s: Path: %s, Total: %d", __FUNCTION__, entry.path().c_str(), mContents.size());
             }
@@ -364,7 +364,7 @@ void FolderContents::init()
     mTotalCount = mContents.size();
 }
 
-InternalSpaceInfo::InternalSpaceInfo(std::string path) : mPath(path), mStatus(NO_ERROR)
+InternalSpaceInfo::InternalSpaceInfo(std::string path) : mPath(std::move(path)), mStatus(NO_ERROR)
 {
     init();
 }
@@ -451,7 +451,7 @@ int32_t InternalSpaceInfo::getStatus()
 
 
 InternalCopy::InternalCopy(std::string src, std::string dest, bool overwrite)
-    : mSrcPath(src), mDestPath(dest), mStatus(NO_ERROR), mOverwrite(overwrite)
+    : mSrcPath(std::move(src)), mDestPath(std::move(dest)), mStatus(NO_ERROR), mOverwrite(overwrite)
 {
     init();
 }
@@ -480,7 +480,7 @@ void InternalCopy::init()
         {
             if (!fs::exists(desPath))
                 fs::create_directories(desPath);
-            mDestPath = desPath;
+            mDestPath = std::move(desPath);
         }
     }
     catch(fs::filesystem_error& e)
@@ -529,7 +529,7 @@ std::int32_t InternalCopy::getStatus()
 }
 
 InternalRemove::InternalRemove(std::string path)
-    : mPath(path), mStatus(NO_ERROR)
+    : mPath(std::move(path)), mStatus(NO_ERROR)
 {
     init();
 }
@@ -559,7 +559,7 @@ int32_t InternalRemove::getStatus()
 }
 
 InternalMove::InternalMove(std::string srcPath, std::string destPath, bool overwrite)
-    : mSrcPath(srcPath), mDestPath(destPath), mStatus(NO_ERROR), mOverwrite(overwrite)
+    : mSrcPath(std::move(srcPath)), mDestPath(std::move(destPath)), mStatus(NO_ERROR), mOverwrite(overwrite)
 {
     init();
 }
@@ -588,7 +588,7 @@ void InternalMove::init()
         {
             if (!fs::exists(desPath))
                 fs::create_directories(desPath);
-            mDestPath = desPath;
+            mDestPath = std::move(desPath);
         }
         mSrcSize = FolderContent(mSrcPath).getSize();
         mDestSize = FolderContent(mDestPath).getSize();
@@ -633,7 +633,7 @@ int32_t InternalMove::getStatus()
 }
 
 InternalRename::InternalRename(std::string oldAbsPath, std::string newAbsPath)
-    : mOldAbsPath(oldAbsPath), mNewAbsPath(newAbsPath), mStatus(NO_ERROR)
+    : mOldAbsPath(std::move(oldAbsPath)), mNewAbsPath(std::move(newAbsPath)), mStatus(NO_ERROR)
 {
     init();
 }
@@ -668,7 +668,7 @@ int32_t InternalRename::getStatus()
     return mStatus;
 }
 
-InternalCreateDir::InternalCreateDir(std::string path) : mPath(path), mStatus(NO_ERROR)
+InternalCreateDir::InternalCreateDir(std::string path) : mPath(std::move(path)), mStatus(NO_ERROR)
 {
     init();
 }
@@ -717,39 +717,39 @@ SAFUtilityOperation& SAFUtilityOperation::getInstance()
 
 std::unique_ptr<FolderContents> SAFUtilityOperation::getListFolderContents(std::string path)
 {
-    std::unique_ptr<FolderContents> obj = std::unique_ptr<FolderContents>( new FolderContents(path));
+    std::unique_ptr<FolderContents> obj = std::unique_ptr<FolderContents>( new FolderContents(std::move(path)));
     return std::move(obj);
 }
 
 std::unique_ptr<InternalSpaceInfo> SAFUtilityOperation::getProperties(std::string path)
 {
     if (path.empty())   path = "/tmp";
-    std::unique_ptr<InternalSpaceInfo> obj = std::unique_ptr<InternalSpaceInfo>( new InternalSpaceInfo(path));
+    std::unique_ptr<InternalSpaceInfo> obj = std::unique_ptr<InternalSpaceInfo>( new InternalSpaceInfo(std::move(path)));
     return std::move(obj);
 }
 
 std::unique_ptr<InternalCopy> SAFUtilityOperation::copy(std::string srcPath,
     std::string destPath, bool overwrite)
 {
-    std::unique_ptr<InternalCopy> obj = std::unique_ptr<InternalCopy>(new InternalCopy(srcPath, destPath, overwrite));
+    std::unique_ptr<InternalCopy> obj = std::unique_ptr<InternalCopy>(new InternalCopy(std::move(srcPath), std::move(destPath), overwrite));
     return std::move(obj);
 }
 
 std::unique_ptr<InternalRemove> SAFUtilityOperation::remove(std::string path)
 {
-    std::unique_ptr<InternalRemove> obj = std::unique_ptr<InternalRemove>(new InternalRemove(path));
+    std::unique_ptr<InternalRemove> obj = std::unique_ptr<InternalRemove>(new InternalRemove(std::move(path)));
     return std::move(obj);
 }
 
 std::unique_ptr<InternalMove> SAFUtilityOperation::move(std::string srcPath, std::string destPath, bool overwrite)
 {
-    std::unique_ptr<InternalMove> obj = std::unique_ptr<InternalMove>(new InternalMove(srcPath, destPath, overwrite));
+    std::unique_ptr<InternalMove> obj = std::unique_ptr<InternalMove>(new InternalMove(std::move(srcPath), std::move(destPath), overwrite));
     return std::move(obj);
 }
 
 std::unique_ptr<InternalRename> SAFUtilityOperation::rename(std::string srcPath, std::string destPath)
 {
-    std::unique_ptr<InternalRename> obj = std::unique_ptr<InternalRename>(new InternalRename(srcPath, destPath));
+    std::unique_ptr<InternalRename> obj = std::unique_ptr<InternalRename>(new InternalRename(std::move(srcPath), std::move(destPath)));
     return std::move(obj);
 }
 

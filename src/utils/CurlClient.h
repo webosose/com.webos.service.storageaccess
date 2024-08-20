@@ -118,7 +118,7 @@ namespace OC
 				    xml += "   <RequestedCount>" + std::to_string(count) + "</RequestedCount>\n";
 				    xml += "   <SortCriteria>" + sort + "</SortCriteria>\n";
 				    xml += "  </u:Browse>\n </s:Body>\n</s:Envelope>\n";
-                    m_xml = xml;
+                    m_xml = std::move(xml);
                     return *this;
                 }
 

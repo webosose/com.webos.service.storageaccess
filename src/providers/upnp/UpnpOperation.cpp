@@ -61,7 +61,7 @@ int UpnpOperation::getNextDirId(int pId, std::string nextDir)
         XMLHandler xmlHandObj(resXml);
         resXml = xmlHandObj.getValue("Result");
         printf("resXml 3 %s", resXml.c_str());
-        xmlHandObj.setXmlContent(resXml);
+        xmlHandObj.setXmlContent(std::move(resXml));
         auto dirs = xmlHandObj.getCurDirDetails(pId);
         for (const auto& dir : dirs)
         {
@@ -118,7 +118,7 @@ int UpnpOperation::getContainerId(std::string url, std::string path)
             pos += 1;
     }
     int id = 0;
-    for (auto dirName : mDirPathNames)
+    for (auto & dirName : mDirPathNames)
     {
         printf("mDirPathNames ");
         id = getNextDirId(id, dirName);
@@ -150,7 +150,7 @@ std::vector<DirDetails> UpnpOperation::listDirContents(int id)
     temp = curlClient.getResponseBody();
     mXmlHandObj.setXmlContent(temp);
     temp = mXmlHandObj.getValue("Result");
-    mXmlHandObj.setXmlContent(temp);
+    mXmlHandObj.setXmlContent(std::move(temp));
     return mXmlHandObj.getCurDirDetails(id);
 }
 
