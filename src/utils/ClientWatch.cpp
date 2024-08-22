@@ -45,9 +45,6 @@ ClientWatch::~ClientWatch()
             error.log(PmLogGetLibContext(), "LS_FAILED_TO_UNREG_SRV_STAT");
     }
 
-    if (mMessage)
-        LSMessageUnref(mMessage);
-
     LSCallCancelNotificationRemove(mHandle, &ClientWatch::clientCanceledCallback, this, NULL);
 }
 
@@ -134,6 +131,9 @@ void ClientWatch::notifyClientCanceled(const char *clientToken)
         LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "%s():%d",__FUNCTION__, __LINE__);
         triggerClientDroppedNotification();
     }
+
+    if (mMessage)
+        LSMessageUnref(mMessage);
 }
 
 } // namespace LS
