@@ -1,6 +1,6 @@
 // @@@LICENSE
 //
-//      Copyright (c) 2018-2022 LG Electronics, Inc.
+//      Copyright (c) 2018-2024 LG Electronics, Inc.
 //
 // Confidential computer software. Valid license from LG required for
 // possession, use or copying. Consistent with FAR 12.211 and 12.212,
@@ -45,6 +45,9 @@ ClientWatch::~ClientWatch()
             error.log(PmLogGetLibContext(), "LS_FAILED_TO_UNREG_SRV_STAT");
     }
 
+    if (mMessage)
+        LSMessageUnref(mMessage);
+
     LSCallCancelNotificationRemove(mHandle, &ClientWatch::clientCanceledCallback, this, NULL);
 }
 
@@ -64,12 +67,7 @@ bool ClientWatch::serverStatusCallback(LSHandle *, const char *, bool connected,
 
 bool ClientWatch::clientCanceledCallback(LSHandle *, const char *uniqueToken, void *context)
 {
-    ClientWatch *watch = static_cast<ClientWatch*>(context);
-    if (nullptr == watch)
-        return false;
-
-    watch->notifyClientCanceled(uniqueToken);
-
+    LOG_DEBUG_SAF("[ClientWatch]%s():%d",__FUNCTION__, __LINE__);
     return true;
 }
 
@@ -131,9 +129,6 @@ void ClientWatch::notifyClientCanceled(const char *clientToken)
         LOG_INFO_SAF(MSGID_FUNCTION_CALL, 0, "%s():%d",__FUNCTION__, __LINE__);
         triggerClientDroppedNotification();
     }
-
-    if (mMessage)
-        LSMessageUnref(mMessage);
 }
 
 } // namespace LS
