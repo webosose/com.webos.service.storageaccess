@@ -28,6 +28,10 @@ option (USE_PMLOG "Enable PmLogLib logging" ON)
 
 include(FindPkgConfig)
 
+pkg_check_modules(LIBCURL REQUIRED libcurl)
+include_directories(${LIBCURL_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${LIBCURL_CFLAGS_OTHER})
+
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 include_directories(${GLIB2_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${GLIB2_CFLAGS_OTHER})
@@ -83,15 +87,13 @@ set(LIBS
     libjconer.a
     libgdrive.a
     ${LS2_LDFLAGS}
+    ${LIBCURL_LDFLAGS}
     ${GLIB2_LDFLAGS}
     ${LIBXML2_LDFLAGS}
     ${PMLOGLIB_LDFLAGS}
     ${PBNJSON_CPP_LDFLAGS}
     ${GUPNP_LDFLAGS}
     -lpthread
-    -lcurl
-    -lglib-2.0
-    -lgupnp-1.2
     -lstdc++fs
     -Wl,--no-undefined
     )
