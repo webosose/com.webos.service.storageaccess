@@ -611,7 +611,7 @@ void NetworkProvider::move(std::shared_ptr<RequestData> reqData)
     if (reqData->params.hasKey("overwrite"))
         overwrite = reqData->params["overwrite"].asBool();
 
-    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(destPath, std::move(destPath), overwrite);
+    std::unique_ptr<InternalMove> movePtr = SAFUtilityOperation::getInstance().move(std::move(srcPath), std::move(destPath), overwrite);
 
     int retStatus = -1;
     int prevStatus = -20;
